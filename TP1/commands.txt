@@ -1,0 +1,7 @@
+Run commands:
+
+Server:
+java Server 10
+
+Client:
+java Client localhost 10 lookup 13-21-XV

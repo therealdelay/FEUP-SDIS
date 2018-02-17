@@ -9,6 +9,11 @@ public class Server {
 	private ArrayList<String> plates = new ArrayList<String>();
 	
 	public static void main(String[] args) throws IOException{
+		if(args.length != 1){
+			System.out.println("Wrong number of arguments");
+			return;
+		}
+			
 		try{
 			Server server = new Server(Integer.parseInt(args[0]));
 			server.start();
@@ -23,7 +28,6 @@ public class Server {
 			this.socket = new DatagramSocket(port_number);
 			register("13-21-XV", "Danny Soares");
 			register("76-16-ZO", "Anabela Pinho");
-			System.out.println(lookup("13-21-XV"));
 		}
 		catch(SocketException e){
 			System.err.println("Failed to create socket");
@@ -31,20 +35,48 @@ public class Server {
 	}
 		
 	private void start() throws IOException{
-		int notOver = 1;
-		while(notOver == 1){
+		while(true){
 			byte[] buf = new byte[256];
 			DatagramPacket packet = new DatagramPacket(buf, buf.length);
 			this.socket.receive(packet);
-			String command = new String(packet.getData());
-			System.out.println("command " + command);
-
-			notOver = 0;
-
+			processRequest(packet);
 		}
+	}
+	
+	private void processRequest(DatagramPacket packet){
+		String request = new String(packet.getData());
+		request = request.trim();
+		System.out.println("Request received: " + request);
+		String[] res = request.split(" ");
+		switch(res[0]){
+			case "REGISTER":
+				try{
+					sendAnswer(String.valueOf(register(res[1],res[2]+" "+res[3])), packet);
+				}
+				catch(IOException e){
+					System.out.println("Error sending response");
+				}
+				break;
+				
+			case "LOOKUP":
+				try{
+					sendAnswer(lookup(res[1]), packet);
+				}
+				catch(IOException e){
+					System.out.println("Error sending response");
+				}
+				break;
+				
+			default:
+				System.out.println("Request order not recognized");
+				break;
+		}
+		
+		System.out.println("----------------------");
 	}
 
 	private void sendAnswer(String answer, DatagramPacket packet) throws IOException{
+		System.out.println("Answer sent: " + answer);
 		byte[] buf = answer.getBytes();
 		InetAddress address = packet.getAddress();
 		int port = packet.getPort();
@@ -63,18 +95,20 @@ public class Server {
 		this.plates.add(plate_number);
 		this.owners.add(owner_name);
 
+		/*
 		for(String s : this.plates)
 			System.out.println(s);
 
 		for(String s : this.owners)
 			System.out.println(s);
+		*/
 
 		return this.plates.size();
 	}
 
 	private String lookup(String plate_number){
 		for(int i = 0; i < this.plates.size(); i++){
-			if(this.plates.get(i).equals(plate_number))
+			if(this.plates.get(i).compareTo(plate_number) == 0)
 				return this.owners.get(i);
 		}
 
