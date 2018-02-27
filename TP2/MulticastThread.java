@@ -1,4 +1,7 @@
-public class MulticastThread extends Thread{
+import java.util.Timer;
+import java.util.TimerTask;
+
+public class MulticastThread extends TimerTask{
 
 	private Server server;
 	
@@ -7,12 +10,7 @@ public class MulticastThread extends Thread{
 	}
 	
 	public void run(){
-		/*
-		while(true){
-			this.server.multicast();
-			
-		*/
-		
-		System.out.println("Hello world");
+		this.server.multicast();
+		//System.out.println("Hello world");
 		}	
 	}
