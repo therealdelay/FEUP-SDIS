@@ -34,7 +34,7 @@ public class Client {
 	
 	private void connectMulticast(){
 		try{
-			this.mcastSocket = new MulticastSocket();
+			this.mcastSocket = new MulticastSocket(this.mcast_port);
 		}
 		catch(IOException e){
 			System.err.println("Failed to create multicast socket");
@@ -57,7 +57,6 @@ public class Client {
 		byte buf[] = new byte[100];
 		DatagramPacket packet = new DatagramPacket(buf,buf.length);
 		
-		System.out.println("Here");
 		try{
 			this.mcastSocket.setSoTimeout(15*1000);
 			this.mcastSocket.receive(packet);
