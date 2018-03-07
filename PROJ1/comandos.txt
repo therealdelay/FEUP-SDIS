@@ -1,0 +1,8 @@
+Comandos:
+
+Non-initiator peer:
+java Peer id Mcc_ip Mcc_port MDB_ip MDB_port
+
+
+Initiator
+java Peer id Mcc_ip Mcc_port MDB_ip MDB_port file_name rep_lay
