@@ -6,3 +6,7 @@ java Peer id Mcc_ip Mcc_port MDB_ip MDB_port
 
 Initiator
 java Peer id Mcc_ip Mcc_port MDB_ip MDB_port file_name rep_lay
+
+
+Server:
+java Server 1.0 1 localhost:10 228.5.6.7:6789 228.5.6.8:6790 228.5.6.9:6791
