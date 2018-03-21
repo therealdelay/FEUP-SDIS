@@ -1,29 +1,42 @@
 import java.io.*;
+import java.nio.*;
+import java.nio.file.*;
 import java.net.*;
 import java.lang.*;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.*;
 
 public class Server {
 
 	private int id;
 	private String version;
 	private DatagramSocket serviceSocket;
-	private MulticastSocket MCsocket;
-	private MulticastSocket MDBsocket;
-	private MulticastSocket MDRsocket;
-	private InetAddress group;
-	private int val;
 	
-	private final static int MAX_WAIT = 400;
+	private TwinMulticastSocket MCsocket;
+	private Thread MClistener;
+	private TwinMulticastSocket MDBsocket;
+	private Thread MDBlistener;
+	private TwinMulticastSocket MDRsocket;
+	private Thread MDRlistener;
+
+	private ThreadPoolExecutor pool;
+	private Path SWD;
+	
+	private ConcurrentHashMap<String,Thread> requests;
+	private CopyOnWriteArrayList<String> files;
+	
+	public final static int MAX_WAIT = 400;
+	public final static int MAX_CHUNK_SIZE = 64000;
+	private final static int MAX_BUFFER_SIZE = 70000;
 	
 	public static void main(String[] args){
-		if(args.length != 6){
+		if(args.length < 6 || args.length > 7){
 			Server.printUsage();
 			return;
 		}
 			
 		Server server = new Server(args);
-		//server.disconnect();
 		server.start();
 	}
 	
@@ -36,13 +49,47 @@ public class Server {
 		this.version = args[0];
 		this.id = Integer.parseInt(args[1]);
 		
-		//Connect Sockets variables
-		String[] name = args[2].split(":");
+		//Connect serviceSocket
+		this.connectServiceSocket(args[2]);
+		
+		try{
+			//Connect MCsocket
+			this.MCsocket = new TwinMulticastSocket(args[3]);
+		
+			if(this.MCsocket == null)
+				System.out.println("null socket");
+	
+			//Connect MDBsocket
+			this.MDBsocket = new TwinMulticastSocket(args[4]);
+		
+			//Connect MDRsocket
+			this.MDRsocket = new TwinMulticastSocket(args[5]);
+		}
+		catch(IOException e){
+			this.disconnect();
+		}
+		
+		this.requests = new ConcurrentHashMap<String,Thread>();
+		this.files = new CopyOnWriteArrayList<String>();
+		
+	    //Create Server Working Directory
+		this.createSWD(args);
+			
+		this.pool = new ThreadPoolExecutor(2,4,10,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(2));
+		
+		//Start multicast channels listener threads
+		this.startListenerThreads();
+	}
+	
+	
+	private void connectServiceSocket(String compName){
+		String[] name = compName.split(":");
 		InetAddress group = null;
+		
+		
 		
 		System.out.println(Arrays.toString(name));
 		
-		//Connect serviceSocket
 		try{
 			group = InetAddress.getByName(name[0]);
 		}
@@ -50,46 +97,24 @@ public class Server {
 			System.out.println("Couldn't find service host");
 		}
 		
+		System.out.println(group.getHostAddress());
+		
 		try{
 			this.serviceSocket = new DatagramSocket(Integer.parseInt(name[1]), group);
 		}
 		catch(SocketException e){
 			System.err.println("Failed to create socket");
 		}
-		
-		name = args[3].split(":");
+	}
+	
+	
+	/*
+	private MulticastSocket connectMulticastSocket(String compName, int port, InetAddress group){
+		MulticastSocket mcastSckt = null;
+
+		String[] name = compName.split(":");
 		System.out.println(Arrays.toString(name));
-		
-		//Connect MCsocket
-		try{
-			group = InetAddress.getByName(name[0]);
-		}
-		catch(UnknownHostException e){
-			System.out.println("Couldn't find multicast group");
-			this.disconnect();
-			System.exit(1);
-		}
-				
-		try{
-			this.MCsocket = new MulticastSocket(Integer.parseInt(name[1]));
-		}
-		catch(IOException e){
-			System.err.println("Failed to create multicast socket");
-			this.disconnect();
-			System.exit(1);
-		}
-		
-		try{ 
-			this.MCsocket.joinGroup(group);
-		}
-		catch(IOException e){
-			System.err.println("Error joining group");
-			this.disconnect();
-			System.exit(1);
-		}
-		
-		//Connect MDBsocket
-		name = args[4].split(":");
+		//InetAddress group = null;
 		
 		try{
 			group = InetAddress.getByName(name[0]);
@@ -100,8 +125,9 @@ public class Server {
 			System.exit(1);
 		}
 		
+		port = Integer.parseInt(name[1]);
 		try{
-			this.MDBsocket = new MulticastSocket(Integer.parseInt(name[1]));
+			mcastSckt = new MulticastSocket(port);
 		}
 		catch(IOException e){
 			System.err.println("Failed to create multicast socket");
@@ -109,8 +135,11 @@ public class Server {
 			System.exit(1);
 		}
 		
+		if(mcastSckt == null)
+			System.out.println("null socket inside inside");
+		
 		try{ 
-			this.MDBsocket.joinGroup(group);
+			mcastSckt.joinGroup(group);
 		}
 		catch(IOException e){
 			System.err.println("Error joining group");
@@ -118,35 +147,33 @@ public class Server {
 			System.exit(1);
 		}
 		
-		//Connect MDRsocket
-		name = args[5].split(":");
-		
+		return mcastSckt;
+	}
+	*/
+	
+	private void createSWD(String args[]){
 		try{
-			group = InetAddress.getByName(name[0]);
+			this.SWD = Paths.get("server"+this.id);
+			Files.createDirectory(this.SWD);
 		}
-		catch(UnknownHostException e){
-			System.out.println("Couldn't find multicast group");
-			this.disconnect();
-			System.exit(1);
-		}
+		catch(IOException e){}
 		
-		try{
-			this.MDRsocket = new MulticastSocket(Integer.parseInt(name[1]));
+		if(args.length == 7){
+			if(args[6].compareTo("-clean") == 0){
+				this.deleteSWDContent();
+			}
 		}
-		catch(IOException e){
-			System.err.println("Failed to create multicast socket");
-			this.disconnect();
-			System.exit(1);
-		}
-		
-		try{ 
-			this.MDRsocket.joinGroup(group);
-		}
-		catch(IOException e){
-			System.err.println("Error joining group");
-			this.disconnect();
-			System.exit(1);
-		}
+		else
+			this.readSDWFiles();
+	}
+	
+	private void startListenerThreads(){
+		this.MClistener = new Thread(new MCListener(this));
+		this.MDBlistener = new Thread(new MDBListener(this));
+		this.MDRlistener = new Thread(new MDRListener(this));
+		this.MClistener.start();
+		this.MDBlistener.start();
+		this.MDRlistener.start();
 	}
 	
 	private void disconnect(){
@@ -178,7 +205,7 @@ public class Server {
 		System.out.println(this.val);
 	}
 	*/
-		
+	
 	private void start(){
 		while(true){
 			byte[] buf = new byte[256];
@@ -212,17 +239,26 @@ public class Server {
 		request = request.trim();
 		System.out.println("Request received: " + request);
 		String[] res = request.split(" ");
-		switch(res[0]){
-			case "echo":
+		String command = res[0].toUpperCase();
+		switch(command){
+			case "ECHO":
 				String[] msg = new String[res.length-1];
 				System.arraycopy(res,1,msg,0,(res.length-1));
 				System.out.println("Msg echoed: "+Arrays.toString(msg));
 				break;
 				
-			case "exit":
+			case "BACKUP":
+			    String[] args = new String[res.length-1];
+				System.arraycopy(res,1,args,0,(res.length-1));
+				this.backupRequest(args);
+				break;
+				
+			case "EXIT":
 				this.disconnect();
+				this.pool.shutdownNow();
 				System.exit(0);
 				break;
+				
 				
 			default:
 				System.out.println("Request order not recognized");
@@ -231,7 +267,57 @@ public class Server {
 		
 		System.out.println("----------------------");
 	}
-
+	
+	private void backupRequest(String[] args){
+		this.pool.execute(new BackUpProtocol(this, args[0], Integer.parseInt(args[1])));
+	}
+	
+	public String getVersion(){
+		return this.version;
+	}
+	
+	public int getId(){
+		return this.id;
+	}
+	
+	public Path getSWD(){
+		return this.SWD;
+	}
+	
+	public TwinMulticastSocket getMCsocket(){
+		return this.MCsocket;
+	}
+	
+	public TwinMulticastSocket getMDBsocket(){
+		return this.MDBsocket;
+	}
+	
+	public TwinMulticastSocket getMDRsocket(){
+		return this.MDRsocket;
+	}
+	
+	public CopyOnWriteArrayList<String> getFiles(){
+		return this.files;
+	}
+	
+	private void deleteSWDContent(){
+		File[] files = this.SWD.toFile().listFiles();
+		for(File file : files){
+			if(!file.isDirectory())
+				file.delete();
+		}
+	}
+	
+	private void readSDWFiles(){
+		String[] parts;
+		File[] files = this.SWD.toFile().listFiles();
+		for(File file : files){
+			this.files.add(file.getName());
+		}
+		
+		System.out.println(this.files.toString());
+	}
+	
 	/*
 	private void sendAnswer(String answer, DatagramPacket packet) throws IOException{
 		System.out.println("Answer sent: " + answer);
@@ -243,11 +329,90 @@ public class Server {
 	}
 	*/
 	
-	class StoredSubService implements Runnable{
-		public void StoredSubService(){}
+	class MCListener implements Runnable{
+		private Server server;
+		
+		public MCListener(Server server){
+			this.server = server;
+		}
+		
 	
 		@Override
 		public void run() {
+			while(true){
+				byte buf[] = new byte[100];
+				DatagramPacket packet = new DatagramPacket(buf,buf.length);
+		
+				try{
+					MCsocket.receive(packet);
+				}
+				catch(IOException e){
+					System.err.println("Error receiving MCsocket packet");
+				}
+				
+				System.out.println("Packet received at MCsocket: " + new String(packet.getData()).trim());
+			}
+		}
+		
+	}
+	
+	class MDBListener implements Runnable{
+		private Server server;
+		
+		public MDBListener(Server server){
+			this.server = server;
+		}
+	
+		@Override
+		public void run() {
+			
+			while(true){
+				byte buf[] = new byte[Server.MAX_BUFFER_SIZE];
+				DatagramPacket packet = new DatagramPacket(buf,buf.length);
+				
+				try{
+					MDBsocket.receive(packet);
+				}
+				catch(IOException e){
+					System.err.println("Error receiving MDBsocket packet");
+				}
+				
+				Thread handler = new Thread(new StoreChunk(this.server, packet.getData()));
+				handler.start();
+				//System.out.println("Packet received at MDBsocket: " + new String(packet.getData()).trim());
+			}
+		}
+		
+		
+	}
+	
+	class MDRListener implements Runnable{
+		private Server server;
+		
+		public MDRListener(Server server){
+			this.server = server;
+		}
+	
+		@Override
+		public void run() {
+			while(true){
+				byte buf[] = new byte[Server.MAX_BUFFER_SIZE];
+				DatagramPacket packet = new DatagramPacket(buf,buf.length);
+		
+				try{
+					MDRsocket.receive(packet);
+				}
+				catch(IOException e){
+					System.err.println("Error receiving MDRsocket packet");
+				}
+				
+				System.out.println("Packet received at MDRsocket: " + new String(packet.getData()).trim());
+			}
+			
+			//System.out.println("Hello world from MDRListener");
+		}
+	}
+	/*
 			Random rand = new Random();
 			int waitTime = rand.nextInt(Server.MAX_WAIT+1);
 			
@@ -257,7 +422,5 @@ public class Server {
 			catch(InterruptedException e){
 				System.err.println("Interrupted");
 			}
-			val++;
-		}
-	}
+			*/
 }
