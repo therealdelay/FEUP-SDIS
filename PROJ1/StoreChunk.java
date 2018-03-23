@@ -9,16 +9,18 @@ import java.util.concurrent.locks.*;
 public class StoreChunk implements Runnable {
 	
 	private byte[] buf;
-	private String chunkBody;
+	private int trueBufLength;
+	private byte[] chunkBody;
 	private Server server;
 	private String version;
 	private String senderId;
 	private String fileId;
 	private String chunkNr;
 	
-	public StoreChunk(Server server, byte[] buf){
+	public StoreChunk(Server server, byte[] buf, int length){
 		this.server = server;
 		this.buf = buf;
+		this.trueBufLength = length;
 	}
 	
 	@Override
@@ -41,40 +43,33 @@ public class StoreChunk implements Runnable {
 		this.sendStoredMsg();
 	}
 	
+	
 	private boolean parseRequest(){
-		System.out.println("Buf size: "+this.buf.length);
+		//System.out.println("Buf size: "+this.buf.length);
+		//System.out.println("Actual buf size: "+this.trueBufLength);
 		String msg = new String(this.buf);
 		String[] parts = msg.split("\r\n");
-		System.out.println("Parts nr: "+parts.length);
-		System.out.println("Header size: "+parts[0].length());
-		System.out.println("Chunk size: "+parts[1].length());
-		//System.out.println("Parts: " +  Arrays.toString(parts));
+		
+		//Parse header elements
 		String[] header = parts[0].split(" ");
-		//System.out.println("Header: " + Arrays.toString(header));
 		this.version = header[1];
 		this.senderId = header[2];
 		this.fileId = header[3];
 		this.chunkNr = header[4];
-		int trueLength = parts.length-1;
-		for(int i = 1; i < trueLength; i++){
-			if(i == trueLength-1)
-				this.chunkBody += parts[i];
-			else
-				this.chunkBody += parts[i]+"\r\n";
-			/*
-			System.out.println("Part size i= "+i+" : "+parts[i].length());
-			this.chunkBody += parts[i];
-			*/
-		}
 		
-		System.out.println("Chunk body size: "+this.chunkBody.length());
+		//Copy actual body
+		int headerLength = parts[0].length()+2;
+		int bodyLength = this.trueBufLength - headerLength;
+		//System.out.println("Actual body copied size: "+ bodyLength);
+		this.chunkBody = new byte[bodyLength];
+		System.arraycopy(this.buf, headerLength, this.chunkBody, 0, bodyLength);
+		
 		if(this.senderId.compareTo(""+this.server.getId()) != 0){
-			System.out.println("Packet received at MDBsocket: " + Arrays.toString(header)+" with size "+this.chunkBody.length());
+			//System.out.println("Packet received at MDBsocket: " + Arrays.toString(header)+" with size "+this.chunkBody.length);
 			return false;
 		}
 		else
 			return true;
-			
 	}
 	
 	private void saveChunk(String chunkFileName){
@@ -85,7 +80,7 @@ public class StoreChunk implements Runnable {
 			File outFile = new File(filePathName);
 			outFile.createNewFile();
 			FileOutputStream outStream = new FileOutputStream(outFile);
-			outStream.write(this.chunkBody.getBytes(),0,this.chunkBody.length());
+			outStream.write(this.chunkBody,0,this.chunkBody.length);
 			outStream.close();
 		}
 		catch(IOException e){
@@ -101,6 +96,19 @@ public class StoreChunk implements Runnable {
 		String msg = this.getStoredMsg();
 		TwinMulticastSocket socket = this.server.getMCsocket();
 		DatagramPacket packet = new DatagramPacket(msg.getBytes(), msg.length(), socket.getGroup(), socket.getPort());
+		
+		//Sleep between 0 and MAX_WAIT
+		Random rand = new Random();
+		int waitTime = rand.nextInt(Server.MAX_WAIT+1);
+		
+		try{
+			Thread.sleep(waitTime);
+		}
+		catch(InterruptedException e){
+			this.printErrMsg("Sleep interrupted");
+		}
+		
+		//Send response
 		try{
 			socket.send(packet);
 		}

@@ -3,12 +3,13 @@ import java.nio.*;
 import java.net.*;
 import java.lang.*;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
 public class BackUpProtocol implements Runnable {
 	
 	private final static int[] TIMEOUT_VALS = {1,2,4,8,16};
-	private final static int MAX_TRIES = 1;
+	private final static int MAX_TRIES = 5;
 	
 	private Server server;
 	private String fileId;
@@ -46,7 +47,7 @@ public class BackUpProtocol implements Runnable {
 				byte[] body = new byte[read];
 				System.out.println("Bytes read: "+read);
 				System.arraycopy(buf,0,body,0,read);
-				System.out.println("Bytes body: "+body.length);
+				//System.out.println("Bytes body: "+body.length);
 				if(!this.backUpChunk(body)){
 					this.exit_err("Unable to reach required replication degree in chunk "+this.currChunk);
 					return;
@@ -67,7 +68,7 @@ public class BackUpProtocol implements Runnable {
 	}
 	
 	private byte[] getPutChunkMsg(byte[] body){
-		String msg = this.getPutChunkHeader() + "\r\n" + new String(body) + "\r\n";
+		String msg = this.getPutChunkHeader() + "\r\n" + new String(body);
 		return msg.getBytes();
 	}
 	
@@ -89,7 +90,7 @@ public class BackUpProtocol implements Runnable {
 		for(int i = 0; i < BackUpProtocol.MAX_TRIES; i++){
 			System.out.println(this.getPutChunkHeader());
 			byte[] msg = this.getPutChunkMsg(buf);
-			System.out.println("Msg size: "+msg.length);
+			//System.out.println("Msg size: "+msg.length);
 			TwinMulticastSocket socket = this.server.getMDBsocket();
 			DatagramPacket packet = new DatagramPacket(msg, msg.length, socket.getGroup(), socket.getPort());
 			try{
@@ -106,30 +107,25 @@ public class BackUpProtocol implements Runnable {
 				this.printErrMsg("Interrupted sleep");
 			}
 			
-			/*
 			try{
-				this.lock.lock()
+				this.lock.lock();
 				if(this.peers.size() >= this.replicationDeg){
+					this.currChunk++;
+					this.peers.clear();
 					done = true;
-					
-					
 				}
 			}
 			finally{
 				this.lock.unlock();
 			}
 			
-			if(done){
-				this.currChunk++;
-				this.peers.clear();
+			if(done)
 				return true;
-			}
-			*/
 		}
 		
-		this.currChunk++;
-		return true;
-		//return false;
+		//this.currChunk++;
+		//return true;
+		return false;
 	}
 	
 	private void exit(){
@@ -140,6 +136,9 @@ public class BackUpProtocol implements Runnable {
 			this.printErrMsg("Unable to close input stream");
 		}
 		System.out.println("File "+this.fileId+" backed up with success");
+		
+		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
+		requests.remove("BACKUP"+this.fileId);
 	}
 	
 	private void exit_err(String err){
@@ -157,14 +156,22 @@ public class BackUpProtocol implements Runnable {
 		System.err.println("Error backing up file "+this.fileId+": "+err);
 	}
 	
-	public void stored(int id){
+	public void stored(int id, int chunk){
 		try{
 			this.lock.lock();
-			if(!this.peers.contains(id))
-				this.peers.add(id);
+			
+			System.out.println("Id: "+ id + " " + "Chunk: " + chunk);
+			if(chunk == this.currChunk){
+				if(!this.peers.contains(id))
+					this.peers.add(id);
+			}
 		}
 		finally{
 			this.lock.unlock();
 		}
+	}
+	
+	public void test(){
+		System.out.println("THIS IS A TEST");
 	}
 }

@@ -23,7 +23,7 @@ public class Server {
 	private ThreadPoolExecutor pool;
 	private Path SWD;
 	
-	private ConcurrentHashMap<String,Thread> requests;
+	private ConcurrentHashMap<String,Runnable> requests;
 	private CopyOnWriteArrayList<String> files;
 	
 	public final static int MAX_WAIT = 400;
@@ -69,7 +69,7 @@ public class Server {
 			this.disconnect();
 		}
 		
-		this.requests = new ConcurrentHashMap<String,Thread>();
+		this.requests = new ConcurrentHashMap<String,Runnable>();
 		this.files = new CopyOnWriteArrayList<String>();
 		
 	    //Create Server Working Directory
@@ -164,7 +164,7 @@ public class Server {
 			}
 		}
 		else
-			this.readSDWFiles();
+			this.readSWDFiles();
 	}
 	
 	private void startListenerThreads(){
@@ -259,7 +259,6 @@ public class Server {
 				System.exit(0);
 				break;
 				
-				
 			default:
 				System.out.println("Request order not recognized");
 				break;
@@ -269,7 +268,9 @@ public class Server {
 	}
 	
 	private void backupRequest(String[] args){
-		this.pool.execute(new BackUpProtocol(this, args[0], Integer.parseInt(args[1])));
+		Runnable handler = new BackUpProtocol(this, args[0], Integer.parseInt(args[1]));
+		this.requests.put("BACKUP"+args[0], handler);
+		this.pool.execute(handler);
 	}
 	
 	public String getVersion(){
@@ -282,6 +283,11 @@ public class Server {
 	
 	public Path getSWD(){
 		return this.SWD;
+	}
+	
+	public ConcurrentHashMap<String,Runnable> getRequests(){
+		//System.out.println(this.requests.toString());
+		return this.requests;
 	}
 	
 	public TwinMulticastSocket getMCsocket(){
@@ -308,7 +314,7 @@ public class Server {
 		}
 	}
 	
-	private void readSDWFiles(){
+	private void readSWDFiles(){
 		String[] parts;
 		File[] files = this.SWD.toFile().listFiles();
 		for(File file : files){
@@ -350,7 +356,10 @@ public class Server {
 					System.err.println("Error receiving MCsocket packet");
 				}
 				
+				
 				System.out.println("Packet received at MCsocket: " + new String(packet.getData()).trim());
+				Thread handler = new Thread(new ControlProtocol(this.server, packet.getData()));
+				handler.start();
 			}
 		}
 		
@@ -377,7 +386,7 @@ public class Server {
 					System.err.println("Error receiving MDBsocket packet");
 				}
 				
-				Thread handler = new Thread(new StoreChunk(this.server, packet.getData()));
+				Thread handler = new Thread(new StoreChunk(this.server, packet.getData(), packet.getLength()));
 				handler.start();
 				//System.out.println("Packet received at MDBsocket: " + new String(packet.getData()).trim());
 			}
