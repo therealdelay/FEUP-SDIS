@@ -24,7 +24,7 @@ public class Server {
 	private Path SWD;
 	
 	private ConcurrentHashMap<String,Runnable> requests;
-	private CopyOnWriteArrayList<String> files;
+	private FileManager fileManager;
 	
 	public final static int MAX_WAIT = 400;
 	public final static int MAX_CHUNK_SIZE = 64000;
@@ -55,9 +55,6 @@ public class Server {
 		try{
 			//Connect MCsocket
 			this.MCsocket = new TwinMulticastSocket(args[3]);
-		
-			if(this.MCsocket == null)
-				System.out.println("null socket");
 	
 			//Connect MDBsocket
 			this.MDBsocket = new TwinMulticastSocket(args[4]);
@@ -69,18 +66,18 @@ public class Server {
 			this.disconnect();
 		}
 		
+		this.fileManager = new FileManager();
 		this.requests = new ConcurrentHashMap<String,Runnable>();
-		this.files = new CopyOnWriteArrayList<String>();
 		
 	    //Create Server Working Directory
 		this.createSWD(args);
-			
+		this.fileManager.setWDir(this.SWD);
+		
 		this.pool = new ThreadPoolExecutor(2,4,10,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(2));
 		
 		//Start multicast channels listener threads
 		this.startListenerThreads();
 	}
-	
 	
 	private void connectServiceSocket(String compName){
 		String[] name = compName.split(":");
@@ -106,50 +103,6 @@ public class Server {
 			System.err.println("Failed to create socket");
 		}
 	}
-	
-	
-	/*
-	private MulticastSocket connectMulticastSocket(String compName, int port, InetAddress group){
-		MulticastSocket mcastSckt = null;
-
-		String[] name = compName.split(":");
-		System.out.println(Arrays.toString(name));
-		//InetAddress group = null;
-		
-		try{
-			group = InetAddress.getByName(name[0]);
-		}
-		catch(UnknownHostException e){
-			System.out.println("Couldn't find multicast group");
-			this.disconnect();
-			System.exit(1);
-		}
-		
-		port = Integer.parseInt(name[1]);
-		try{
-			mcastSckt = new MulticastSocket(port);
-		}
-		catch(IOException e){
-			System.err.println("Failed to create multicast socket");
-			this.disconnect();
-			System.exit(1);
-		}
-		
-		if(mcastSckt == null)
-			System.out.println("null socket inside inside");
-		
-		try{ 
-			mcastSckt.joinGroup(group);
-		}
-		catch(IOException e){
-			System.err.println("Error joining group");
-			this.disconnect();
-			System.exit(1);
-		}
-		
-		return mcastSckt;
-	}
-	*/
 	
 	private void createSWD(String args[]){
 		try{
@@ -189,22 +142,6 @@ public class Server {
 		if(this.MDRsocket != null)
 			this.MDRsocket.close();
 	}
-		
-	
-	/*
-	public void execute(){
-		this.val = 0;
-		Thread test = new Thread(new StoredSubService());
-		test.start();
-		try{
-			test.join();
-		}
-		catch(InterruptedException e){
-			System.err.println("Interrupted");
-		}
-		System.out.println(this.val);
-	}
-	*/
 	
 	private void start(){
 		while(true){
@@ -219,20 +156,6 @@ public class Server {
 			processRequest(packet);
 		}
 	}
-	
-	/*
-	public void multicast(){
-		DatagramPacket packet = new DatagramPacket(this.mcast_msg.getBytes(), this.mcast_msg.length(), this.group, this.mcast_port);
-		try{
-			this.mcastSocket.setTimeToLive(1);
-			this.mcastSocket.send(packet);
-			System.out.println("Multicast sent");
-		}
-		catch(IOException e){
-			System.err.println("Error sending multicast");
-		}
-	}
-	*/
 	
 	private void processRequest(DatagramPacket packet){
 		String request = new String(packet.getData());
@@ -253,6 +176,18 @@ public class Server {
 				this.backupRequest(args);
 				break;
 				
+			case "RESTORE":
+			    String[] args2 = new String[res.length-1];
+				System.arraycopy(res,1,args2,0,(res.length-1));
+				this.restoreRequest(args2);
+				break;
+				
+			case "DELETE":
+			    String[] args3 = new String[res.length-1];
+				System.arraycopy(res,1,args3,0,(res.length-1));
+				this.deleteRequest(args3);
+				break;
+				
 			case "EXIT":
 				this.disconnect();
 				this.pool.shutdownNow();
@@ -271,6 +206,16 @@ public class Server {
 		Runnable handler = new BackUpProtocol(this, args[0], Integer.parseInt(args[1]));
 		this.requests.put("BACKUP"+args[0], handler);
 		this.pool.execute(handler);
+	}
+	
+	private void restoreRequest(String[] args){
+		Runnable handler = new RestoreProtocol(this, args[0]);
+		this.requests.put("RESTORE"+args[0], handler);
+		this.pool.execute(handler);
+	}
+	
+	private void deleteRequest(String[] args){
+		this.pool.execute(new DeleteProtocol(this, args[0]));
 	}
 	
 	public String getVersion(){
@@ -302,8 +247,8 @@ public class Server {
 		return this.MDRsocket;
 	}
 	
-	public CopyOnWriteArrayList<String> getFiles(){
-		return this.files;
+	public FileManager getFileManager(){
+		return this.fileManager;
 	}
 	
 	private void deleteSWDContent(){
@@ -318,22 +263,11 @@ public class Server {
 		String[] parts;
 		File[] files = this.SWD.toFile().listFiles();
 		for(File file : files){
-			this.files.add(file.getName());
+			this.fileManager.addFile(new ServerFile(file.getName(),0));
 		}
 		
-		System.out.println(this.files.toString());
+		System.out.println(this.fileManager.toString());
 	}
-	
-	/*
-	private void sendAnswer(String answer, DatagramPacket packet) throws IOException{
-		System.out.println("Answer sent: " + answer);
-		byte[] buf = answer.getBytes();
-		InetAddress address = packet.getAddress();
-		int port = packet.getPort();
-		packet = new DatagramPacket(buf, buf.length, address, port);
-		socket.send(packet);
-	}
-	*/
 	
 	class MCListener implements Runnable{
 		private Server server;
@@ -415,21 +349,10 @@ public class Server {
 					System.err.println("Error receiving MDRsocket packet");
 				}
 				
-				System.out.println("Packet received at MDRsocket: " + new String(packet.getData()).trim());
+				Thread handler = new Thread(new Chunk(this.server, packet.getData(), packet.getLength()));
+				handler.start();
+				//System.out.println("Packet received at MDRsocket: " + new String(packet.getData()).trim());
 			}
-			
-			//System.out.println("Hello world from MDRListener");
 		}
 	}
-	/*
-			Random rand = new Random();
-			int waitTime = rand.nextInt(Server.MAX_WAIT+1);
-			
-			try{
-				Thread.sleep(waitTime);
-			}
-			catch(InterruptedException e){
-				System.err.println("Interrupted");
-			}
-			*/
 }

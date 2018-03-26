@@ -14,4 +14,14 @@ Server:
 3. java Server 1.0 3 127.0.0.3:12 228.5.6.7:6789 228.5.6.8:6790 228.5.6.9:6791 [-clean]
 
 Client:
-java Client localhost 10 backup bar.gif 3
+
+-Backup
+java Client localhost 10 backup bar.gif 2
+java Client 127.0.0.1 10 backup big.zip 2
+java Client 127.0.0.3 12 backup big.zip 2
+
+-Restore
+java Client localhost 10 restore bar.gif
+
+-Delete
+java Client localhost 10 delete bar.gif<
