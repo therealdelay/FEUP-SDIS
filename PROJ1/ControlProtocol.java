@@ -114,7 +114,7 @@ public class ControlProtocol implements Runnable {
 		}
 		
 		byte[] cleanBuf = new byte[read];
-		System.arraycopy(cleanBuf,0,buf,0,read);
+		System.arraycopy(buf,0,cleanBuf,0,read);
 		
 		this.sendChunkMsg(cleanBuf);
 	}
@@ -146,8 +146,11 @@ public class ControlProtocol implements Runnable {
 	}
 	
 	private byte[] getChunkMsg(byte[] body){
-		String msg = this.getChunkHeader() + "\r\n" + new String(body);
-		return msg.getBytes();
+		byte[] header = (this.getChunkHeader()+"\r\n").getBytes();
+		byte[] msg = new byte[header.length+body.length];
+		System.arraycopy(header,0,msg,0,header.length);
+		System.arraycopy(body,0,msg,header.length,body.length);
+		return msg;
 	}
 	
 	private void printErrMsg(String err){

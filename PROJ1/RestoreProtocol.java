@@ -74,6 +74,7 @@ public class RestoreProtocol implements Runnable {
 	}
 	
 	private void saveChunk(){
+		System.out.println("RestoreProt BufLength: "+this.buf.length);
 		try{
 			this.outStream.write(this.buf,0,this.buf.length);
 		}
@@ -129,13 +130,13 @@ public class RestoreProtocol implements Runnable {
 	}
 	
 	public void chunk(int chunk, byte[] buf){
-		System.out.println(buf.length);
 		try{
 			this.lock.lock();
-			if(chunk == this.currChunk)
+			if(chunk == this.currChunk && this.received == false){
 				this.received = true;
 				this.currChunk++;
 				this.buf = buf;
+			}
 		}
 		finally{
 			this.lock.unlock();

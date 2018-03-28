@@ -68,10 +68,12 @@ public class BackUpProtocol implements Runnable {
 	}
 	
 	private byte[] getPutChunkMsg(byte[] body){
-		String msg = this.getPutChunkHeader() + "\r\n" + new String(body);
-		return msg.getBytes();
+		byte[] header = (this.getPutChunkHeader()+"\r\n").getBytes();
+		byte[] msg = new byte[header.length+body.length];
+		System.arraycopy(header,0,msg,0,header.length);
+		System.arraycopy(body,0,msg,header.length,body.length);
+		return msg;
 	}
-	
 	
 	private FileInputStream openSrcFile(){
 		FileInputStream inStream;
@@ -90,7 +92,7 @@ public class BackUpProtocol implements Runnable {
 		for(int i = 0; i < BackUpProtocol.MAX_TRIES; i++){
 			System.out.println(this.getPutChunkHeader());
 			byte[] msg = this.getPutChunkMsg(buf);
-			//System.out.println("Msg size: "+msg.length);
+			System.out.println("Msg size: "+msg.length);
 			TwinMulticastSocket socket = this.server.getMDBsocket();
 			DatagramPacket packet = new DatagramPacket(msg, msg.length, socket.getGroup(), socket.getPort());
 			try{

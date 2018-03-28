@@ -35,6 +35,10 @@ public class Chunk implements Runnable {
 		
 		if(handler != null){
 			System.out.println("ControlProtocol: Notifying Restore");
+			/*
+			System.out.println("ChunkBody: ");
+			System.out.println(new String(this.chunkBody));
+			*/
 			handler.chunk(Integer.parseInt(this.chunkNr.trim()), this.chunkBody);
 		}
 	}
@@ -44,6 +48,7 @@ public class Chunk implements Runnable {
 		//System.out.println("Buf size: "+this.buf.length);
 		//System.out.println("Actual buf size: "+this.trueBufLength);
 		String msg = new String(this.buf);
+		//System.out.println(msg);
 		String[] parts = msg.split("\r\n");
 		
 		//Parse header elements
