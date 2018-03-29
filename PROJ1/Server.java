@@ -119,7 +119,7 @@ public class Server implements ServerInterf {
             ServerInterf proxy = (ServerInterf) UnicastRemoteObject.exportObject(this, 0);
 			String name = Integer.toString(this.id);
 			System.out.println(name);
-            this.rmiRegistry.bind(name, proxy);
+            this.rmiRegistry.rebind(name, proxy);
 		} catch (Exception e) {
 			System.err.println("Unable to set up RMI");
 			System.exit(1);
@@ -174,6 +174,10 @@ public class Server implements ServerInterf {
 		}
 	}
 	
+	public OutputStream getOutputStream(String fileName) throws IOException {
+		return new RMIOutputStream(new RMIOutputStream.RMIOutputStreamImpl(this.fileManager.getOutStream(fileName)));
+	}
+	
 	public String echo(String msg){
 		this.printRequest("ECHO "+msg);
 		return msg;
@@ -186,11 +190,21 @@ public class Server implements ServerInterf {
 		this.pool.execute(handler);
 	}
 	
-	public void restore(String fileName){
+	public InputStream restore(String fileName) throws IOException{
 		this.printRequest("RESTORE "+fileName);
-		Runnable handler = new RestoreProtocol(this, fileName);
+		PipedOutputStream outPipe = new PipedOutputStream();
+		PipedInputStream inPipe;
+		try{
+			inPipe = new PipedInputStream(outPipe);
+		}
+		catch(IOException e){
+			System.err.println("Unable to open pipe");
+			return null;
+		}
+		Runnable handler = new RestoreProtocol(this, fileName, outPipe);
 		this.requests.put("RESTORE"+fileName, handler);
 		this.pool.execute(handler);
+		return new RMIInputStream(new RMIInputStream.RMIInputStreamImpl(inPipe));
 	}
 	
 	public void delete(String fileName){

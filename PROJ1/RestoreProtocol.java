@@ -17,11 +17,12 @@ public class RestoreProtocol implements Runnable {
 	private byte[] buf;
 	private ReentrantLock lock;
 	
-	private FileOutputStream outStream;
+	private OutputStream outStream;
 	
-	public RestoreProtocol(Server server, String fileId){
+	public RestoreProtocol(Server server, String fileId, OutputStream outStream){
 		this.server = server;
 		this.fileId = fileId;
+		this.outStream = outStream;
 		this.lock = new ReentrantLock();
 	}
 	
@@ -32,7 +33,7 @@ public class RestoreProtocol implements Runnable {
 		System.out.println("Total Chunks: "+totalChunks);
 		String[] parts = this.fileId.split("\\.");
 		String name = parts[0]+"Restore."+parts[1];
-		this.outStream = fileManager.getOutStream(name);
+		/*this.outStream = fileManager.getOutStream(name);*/
 		
 		for(int i = 0; i < totalChunks; i++){
 			if(!this.receiveChunk()){

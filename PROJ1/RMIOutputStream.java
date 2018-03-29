@@ -43,7 +43,6 @@ public class RMIOutputStream extends OutputStream implements Serializable{
 
 	}
 	
-	
 	public RMIOutputStream(RMIOutputStreamImpl out) {
         this.out = out;
     }

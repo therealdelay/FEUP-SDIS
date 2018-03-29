@@ -9,6 +9,8 @@ public class TestApp {
 	private String command;
 	private String[] args;
 	private ServerInterf proxy;
+	
+	private final static int BUF_SIZE = 1024 * 64;
 
 	public static void main(String[] args){
 		int argsNr = args.length;
@@ -48,6 +50,18 @@ public class TestApp {
 		}
 	}
 	
+	 public void copy(InputStream in, OutputStream out) throws IOException {
+        System.out.println("using byte[] read/write");
+        byte[] b = new byte[BUF_SIZE];
+        int len;
+        while ((len = in.read(b)) >= 0) {
+			//System.out.println(len);
+            out.write(b, 0, len);
+        }
+        in.close();
+        out.close();
+    }
+	
 	
 	private void echo(){
 		String echoMsg;
@@ -63,21 +77,36 @@ public class TestApp {
 	
 	private void backup(){
 		System.out.println("Processing backup...");
+		
+		FileInputStream inStream = null;
+		
 		try{
+			inStream = new FileInputStream(new File(this.args[0]));
+		}
+		catch(Exception e){
+			System.err.println("File not found");
+			return;
+		}
+		
+		try{
+			this.copy(inStream, this.proxy.getOutputStream(this.args[0]));
 			this.proxy.backup(this.args[0], Integer.parseInt(this.args[1]));
 		}
 		catch(Exception e){
 			System.err.println("Failed to send: BACKUP");
+			e.printStackTrace();
 		}
 	}
 	
 	private void restore(){
 		System.out.println("Processing restore...");
 		try{
-			this.proxy.restore(this.args[0]);
+			InputStream inStream = this.proxy.restore(this.args[0]);
+			copy(inStream, new FileOutputStream(new File(this.args[0])));
 		}
 		catch(Exception e){
-			System.err.println("Failed to send: RESTORE");
+			System.err.println("Failed to restore");
+			e.printStackTrace();
 		}
 	}
 	
@@ -87,7 +116,7 @@ public class TestApp {
 			this.proxy.delete(this.args[0]);
 		}
 		catch(Exception e){
-			System.err.println("Failed to request: DELETE");
+			System.err.println("Failed to delete");
 		}
 	}
 	
@@ -97,18 +126,18 @@ public class TestApp {
 			this.proxy.delete(this.args[0]);
 		}
 		catch(Exception e){
-			System.err.println("Failed to request: DELETE");
+			System.err.println("Failed to reclaim");
 		}
 	}
 	
 	private void state(){
-		System.out.println("Processing reclaim...");
+		System.out.println("Processing state...");
 		try{
 			String state = this.proxy.state();
 			System.out.println(state);
 		}
 		catch(Exception e){
-			System.err.println("Failed to request: DELETE");
+			System.err.println("Failed to state");
 		}
 	}
 	
