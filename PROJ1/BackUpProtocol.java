@@ -164,8 +164,11 @@ public class BackUpProtocol implements Runnable {
 			
 			System.out.println("Id: "+ id + " " + "Chunk: " + chunk);
 			if(chunk == this.currChunk){
-				if(!this.peers.contains(id))
+				if(!this.peers.contains(id)){
 					this.peers.add(id);
+					FileManager fm = this.server.getFileManager();
+					//setChunkRepDegree
+				}
 			}
 		}
 		finally{

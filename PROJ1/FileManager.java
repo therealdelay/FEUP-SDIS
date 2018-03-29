@@ -7,6 +7,7 @@ import java.util.*;
 public class FileManager{
 	private ArrayList<ServerFile> files;
 	private Path WDir;
+	private ArrayList<ServerChunk> chunks;
 	
 	public FileManager(){
 		this.files = new ArrayList<ServerFile>();
@@ -20,6 +21,10 @@ public class FileManager{
 		this.files.add(file);
 	}
 	
+	public synchronized void addChunks(ServerChunk chunk){
+		this.chunks.add(chunk);
+	}
+
 	/*
 	public void removeFile(String fileName){
 		
@@ -40,17 +45,39 @@ public class FileManager{
 		file.delete();
 	}
 	*/
+
+	public void freeMem(int memToFree){
+		ArrayList<String> filesToRemove = new ArrayList<String>();
+		synchronized(this.chunks){
+			ServerChunk chunk;
+			while(memToFree > 0){
+				chunk = this.chunks.get(0);
+				this.chunks.remove(0);
+				//decChunkRepDeg
+				filesToRemove.add(chunk.getId());
+				memToFree -= chunk.getSize();
+			}
+		}
+		
+		File file;
+		for(int i = 0; i < filesToRemove.size(); i++){
+			System.out.println("Deleting file: "+filesToRemove.get(i));
+			file = new File(this.getFilePathName(filesToRemove.get(i)));
+			file.delete();
+		}
+	}
 	
 	public void removeAllChunks(String id){
 		
 		ArrayList<String> filesToRemove = new ArrayList<String>();
-		synchronized(this.files){
-			ServerFile file;
-			for(int i = 0; i < this.files.size(); i++){
-				file = this.files.get(i);
-				if(file.getId().matches("(.*)"+id+"(.*)")){
-					this.files.remove(i);
-					filesToRemove.add(file.getId());
+		synchronized(this.chunks){
+			ServerChunk chunk;
+			for(int i = 0; i < this.chunks.size(); i++){
+				chunk = this.chunks.get(i);
+				if(chunk.getId().matches("(.*)"+id+"(.*)")){
+					this.chunks.remove(i);
+					//decChunkRepDeg
+					filesToRemove.add(chunks.getId());
 					i--;
 				}
 			}
@@ -64,11 +91,21 @@ public class FileManager{
 		}
 	}
 	
-	public synchronized boolean contains(String fileName){
+	public synchronized boolean containsFile(String fileName){
 		ServerFile file;
 		for(int i = 0; i < this.files.size(); i++){
 			file = this.files.get(i);
 			if(file.getId().compareTo(fileName) == 0)
+				return true;
+		}
+		return false;
+	}
+
+	public synchronized boolean containsChunk(String chunkName){
+		ServerChunk chunk;
+		for(int i = 0; i < this.chunks.size(); i++){
+			chunk = this.chunks.get(i);
+			if(chunk.getId().compareTo(chunkName) == 0)
 				return true;
 		}
 		return false;

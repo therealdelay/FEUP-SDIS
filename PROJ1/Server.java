@@ -29,6 +29,9 @@ public class Server {
 	public final static int MAX_WAIT = 400;
 	public final static int MAX_CHUNK_SIZE = 64000;
 	private final static int MAX_BUFFER_SIZE = 70000;
+	public final static int MAX_MEM = 8388608;
+	public static int usedMem = 0;
+
 	
 	public static void main(String[] args){
 		if(args.length < 6 || args.length > 7){
@@ -187,7 +190,13 @@ public class Server {
 				System.arraycopy(res,1,args3,0,(res.length-1));
 				this.deleteRequest(args3);
 				break;
-				
+					
+			case "RECLAIM":
+			    String[] args4 = new String[res.length-1];
+				System.arraycopy(res,1,args4,0,(res.length-1));
+				this.reclaimRequest(args4);
+				break;
+
 			case "EXIT":
 				this.disconnect();
 				this.pool.shutdownNow();
@@ -216,6 +225,12 @@ public class Server {
 	
 	private void deleteRequest(String[] args){
 		this.pool.execute(new DeleteProtocol(this, args[0]));
+	}	
+	
+	private void reclaimRequest(String[] args){
+		Runnable handler = new ReclaimProtocol(this, Integer.parseInt(args[0]));
+		this.requests.put("REMOVED"+args[0], handler);
+		this.pool.execute(handler);
 	}
 	
 	public String getVersion(){
@@ -263,7 +278,11 @@ public class Server {
 		String[] parts;
 		File[] files = this.SWD.toFile().listFiles();
 		for(File file : files){
-			this.fileManager.addFile(new ServerFile(file.getName(),0));
+			this.fileManager.addFile(new ServerFile(file.getName(),0,file.length()));
+			if(this.usedMem + file.length() <= this.MAX_MEM)
+				this.usedMem += file.length();
+			else
+				System.out.println("Not enough space to store this file.");
 		}
 		
 		System.out.println(this.fileManager.toString());
