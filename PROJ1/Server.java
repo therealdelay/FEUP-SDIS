@@ -3,15 +3,20 @@ import java.nio.*;
 import java.nio.file.*;
 import java.net.*;
 import java.lang.*;
+import java.rmi.registry.Registry;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
-public class Server {
+public class Server implements ServerInterf {
 
 	private int id;
 	private String version;
-	private DatagramSocket serviceSocket;
+	
+	private Registry rmiRegistry;
 	
 	private TwinMulticastSocket MCsocket;
 	private Thread MClistener;
@@ -31,13 +36,12 @@ public class Server {
 	private final static int MAX_BUFFER_SIZE = 70000;
 	
 	public static void main(String[] args){
-		if(args.length < 6 || args.length > 7){
+		if(args.length < 5 || args.length > 6){
 			Server.printUsage();
 			return;
 		}
 			
 		Server server = new Server(args);
-		server.start();
 	}
 	
 	public static void printUsage(){
@@ -49,18 +53,18 @@ public class Server {
 		this.version = args[0];
 		this.id = Integer.parseInt(args[1]);
 		
-		//Connect serviceSocket
-		this.connectServiceSocket(args[2]);
+		//Connect to RMI
+		this.connectRMI();
 		
 		try{
 			//Connect MCsocket
-			this.MCsocket = new TwinMulticastSocket(args[3]);
+			this.MCsocket = new TwinMulticastSocket(args[2]);
 	
 			//Connect MDBsocket
-			this.MDBsocket = new TwinMulticastSocket(args[4]);
+			this.MDBsocket = new TwinMulticastSocket(args[3]);
 		
 			//Connect MDRsocket
-			this.MDRsocket = new TwinMulticastSocket(args[5]);
+			this.MDRsocket = new TwinMulticastSocket(args[4]);
 		}
 		catch(IOException e){
 			this.disconnect();
@@ -79,29 +83,47 @@ public class Server {
 		this.startListenerThreads();
 	}
 	
-	private void connectServiceSocket(String compName){
-		String[] name = compName.split(":");
-		InetAddress group = null;
+	
+	private void connectRMI(){
+		int port = Registry.REGISTRY_PORT;
 		
+		InetAddress localAddress = null;
+		try{
+			InetAddress address = InetAddress.getByName("localhost");
+			localAddress = InetAddress.getLocalHost();
+			System.out.println(address.getHostAddress()+" "+address.getHostName());
+			System.out.println(localAddress.getHostAddress()+" "+localAddress.getHostName());
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
 		
-		
-		System.out.println(Arrays.toString(name));
+		this.rmiRegistry = null;
+		try{
+			this.rmiRegistry = LocateRegistry.createRegistry(port);
+		}
+		catch(Exception e){
+			
+			System.out.println("Registry already exists new registry");
+			
+			try{
+				this.rmiRegistry = LocateRegistry.getRegistry(port);
+			}
+			catch(Exception e2){
+				System.err.println("Server exception: " + e.toString());
+				e.printStackTrace();
+			}
+		}
 		
 		try{
-			group = InetAddress.getByName(name[0]);
-		}
-		catch(UnknownHostException e){
-			System.out.println("Couldn't find service host");
-		}
-		
-		System.out.println(group.getHostAddress());
-		
-		try{
-			this.serviceSocket = new DatagramSocket(Integer.parseInt(name[1]), group);
-		}
-		catch(SocketException e){
-			System.err.println("Failed to create socket");
-		}
+            ServerInterf proxy = (ServerInterf) UnicastRemoteObject.exportObject(this, 0);
+			String name = Integer.toString(this.id);
+			System.out.println(name);
+            this.rmiRegistry.bind(name, proxy);
+		} catch (Exception e) {
+			System.err.println("Unable to set up RMI");
+			System.exit(1);
+        }
 	}
 	
 	private void createSWD(String args[]){
@@ -111,8 +133,8 @@ public class Server {
 		}
 		catch(IOException e){}
 		
-		if(args.length == 7){
-			if(args[6].compareTo("-clean") == 0){
+		if(args.length == 6){
+			if(args[5].compareTo("-clean") == 0){
 				this.deleteSWDContent();
 			}
 		}
@@ -130,8 +152,6 @@ public class Server {
 	}
 	
 	private void disconnect(){
-		if(this.serviceSocket != null)
-			this.serviceSocket.close();
 		
 		if(this.MCsocket != null)
 			this.MCsocket.close();
@@ -141,81 +161,57 @@ public class Server {
 		
 		if(this.MDRsocket != null)
 			this.MDRsocket.close();
-	}
-	
-	private void start(){
-		while(true){
-			byte[] buf = new byte[256];
-			DatagramPacket packet = new DatagramPacket(buf, buf.length);
-			try{
-				this.serviceSocket.receive(packet);
-			}
-			catch(IOException e){
-				System.out.println("Error receiving message");
-			}
-			processRequest(packet);
-		}
-	}
-	
-	private void processRequest(DatagramPacket packet){
-		String request = new String(packet.getData());
-		request = request.trim();
-		System.out.println("Request received: " + request);
-		String[] res = request.split(" ");
-		String command = res[0].toUpperCase();
-		switch(command){
-			case "ECHO":
-				String[] msg = new String[res.length-1];
-				System.arraycopy(res,1,msg,0,(res.length-1));
-				System.out.println("Msg echoed: "+Arrays.toString(msg));
-				break;
-				
-			case "BACKUP":
-			    String[] args = new String[res.length-1];
-				System.arraycopy(res,1,args,0,(res.length-1));
-				this.backupRequest(args);
-				break;
-				
-			case "RESTORE":
-			    String[] args2 = new String[res.length-1];
-				System.arraycopy(res,1,args2,0,(res.length-1));
-				this.restoreRequest(args2);
-				break;
-				
-			case "DELETE":
-			    String[] args3 = new String[res.length-1];
-				System.arraycopy(res,1,args3,0,(res.length-1));
-				this.deleteRequest(args3);
-				break;
-				
-			case "EXIT":
-				this.disconnect();
-				this.pool.shutdownNow();
-				System.exit(0);
-				break;
-				
-			default:
-				System.out.println("Request order not recognized");
-				break;
-		}
 		
+		if(this.rmiRegistry != null){
+			try{
+				this.rmiRegistry.unbind("server");
+				UnicastRemoteObject.unexportObject(this, true);
+				UnicastRemoteObject.unexportObject(this.rmiRegistry, true);
+			}
+			catch(Exception e){
+				System.err.println("Error disconnecting Server");
+			}
+		}
+	}
+	
+	public String echo(String msg){
+		this.printRequest("ECHO "+msg);
+		return msg;
+	}
+	
+	public void backup(String fileName, int repDegree){
+		this.printRequest("BACKUP "+fileName+" "+repDegree);
+		Runnable handler = new BackUpProtocol(this, fileName, repDegree);
+		this.requests.put("BACKUP"+fileName, handler);
+		this.pool.execute(handler);
+	}
+	
+	public void restore(String fileName){
+		this.printRequest("RESTORE "+fileName);
+		Runnable handler = new RestoreProtocol(this, fileName);
+		this.requests.put("RESTORE"+fileName, handler);
+		this.pool.execute(handler);
+	}
+	
+	public void delete(String fileName){
+		this.printRequest("DELETE "+fileName);
+		this.pool.execute(new DeleteProtocol(this, fileName));
+	}
+	
+	public void reclaim(int mem){
+		this.printRequest("RECLAIM "+mem);
+		System.out.println("Reclaiming");
+	}
+	
+	public String state(){
+		this.printRequest("STATE");
+		return this.fileManager.toString();
+	}
+	
+	private void printRequest(String request){
 		System.out.println("----------------------");
-	}
-	
-	private void backupRequest(String[] args){
-		Runnable handler = new BackUpProtocol(this, args[0], Integer.parseInt(args[1]));
-		this.requests.put("BACKUP"+args[0], handler);
-		this.pool.execute(handler);
-	}
-	
-	private void restoreRequest(String[] args){
-		Runnable handler = new RestoreProtocol(this, args[0]);
-		this.requests.put("RESTORE"+args[0], handler);
-		this.pool.execute(handler);
-	}
-	
-	private void deleteRequest(String[] args){
-		this.pool.execute(new DeleteProtocol(this, args[0]));
+		System.out.println("Request received: "+request);
+		System.out.println("----------------------");
 	}
 	
 	public String getVersion(){
