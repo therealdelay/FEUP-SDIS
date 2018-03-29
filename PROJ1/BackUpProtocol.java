@@ -175,8 +175,4 @@ public class BackUpProtocol implements Runnable {
 			this.lock.unlock();
 		}
 	}
-	
-	public void test(){
-		System.out.println("THIS IS A TEST");
-	}
 }
