@@ -12,6 +12,7 @@ public class BackUpProtocol implements Runnable {
 	private final static int MAX_TRIES = 5;
 	
 	private Server server;
+	private String fileName;
 	private String fileId;
 	private int replicationDeg;
 	private ReentrantLock lock;
@@ -22,9 +23,9 @@ public class BackUpProtocol implements Runnable {
 	
 	private FileInputStream inStream = null;
 	
-	public BackUpProtocol(Server server, String fileId, int replicationDeg){
+	public BackUpProtocol(Server server, String fileName, int replicationDeg){
 		this.server = server;
-		this.fileId = fileId;
+		this.fileName = fileName;
 		this.replicationDeg = replicationDeg;
 		this.lock = new ReentrantLock();
 		this.peers = new ArrayList<Integer>();
@@ -33,10 +34,13 @@ public class BackUpProtocol implements Runnable {
 	@Override
 	public void run (){
 		
-		FileManager fileManager = this.server.getFileManager();
-		fileManager.addFile(new ServerFile(this.fileId, this.replicationDeg));
+		ServerFile serverFile = new ServerFile(this.fileName, this.replicationDeg);
+		this.fileId = serverFile.getId(); 	//Get file id
 		
-		this.inStream = this.openSrcFile();
+		FileManager fileManager = this.server.getFileManager();
+		fileManager.addFile(serverFile);
+		
+		this.inStream = fileManager.getFileInStream(this.fileName);
 		if(this.inStream == null){
 			this.exit_err("Unable to open src file");
 			return;
@@ -76,19 +80,7 @@ public class BackUpProtocol implements Runnable {
 		System.arraycopy(header,0,msg,0,header.length);
 		System.arraycopy(body,0,msg,header.length,body.length);
 		return msg;
-	}
-	
-	private FileInputStream openSrcFile(){
-		FileInputStream inStream;
-		try{
-			inStream = new FileInputStream(new File(this.server.getSWD().toString()+"/"+this.fileId));
-		}
-		catch(FileNotFoundException e){
-			System.err.println("File not found");
-			return null;
-		}
-		return inStream;
-	}
+	}	
 	
 	private boolean backUpChunk(byte buf[]){
 		boolean done = false;
@@ -140,7 +132,7 @@ public class BackUpProtocol implements Runnable {
 		catch(IOException e){
 			this.printErrMsg("Unable to close input stream");
 		}
-		System.out.println("File "+this.fileId+" backed up with success");
+		System.out.println("File "+this.fileName+" backed up with success");
 		
 		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
 		requests.remove("BACKUP"+this.fileId);
@@ -158,7 +150,7 @@ public class BackUpProtocol implements Runnable {
 	}
 	
 	private void printErrMsg(String err){
-		System.err.println("Error backing up file "+this.fileId+": "+err);
+		System.err.println("Error backing up file "+this.fileName+": "+err);
 	}
 	
 	public void stored(int id, int chunk){

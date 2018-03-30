@@ -121,9 +121,7 @@ public class ControlProtocol implements Runnable {
 	
 	private void processDelete(){
 		System.out.println("Processing Delete...");
-		String id = this.fileId.split("\\.")[0];
-		FileManager fileManager = this.server.getFileManager();
-		fileManager.removeAllChunks(id);
+		this.server.getFileManager().removeAllChunks(this.fileId.trim());
 	}
 	
 	

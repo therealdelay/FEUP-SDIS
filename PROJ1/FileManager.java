@@ -95,22 +95,22 @@ public class FileManager{
 		}
 	}
 		
-	public synchronized boolean containsFile(String fileName){
+	public synchronized boolean containsFile(String fileId){
 		ServerFile file;
 		for(int i = 0; i < this.files.size(); i++){
 			file = this.files.get(i);
-			if(file.getId().compareTo(fileName) == 0)
+			if(file.getId().compareTo(fileId) == 0)
 				return true;
 		}
 		return false;
 	}
 
-	public synchronized boolean containsChunk(String chunkName){
+	public synchronized boolean containsChunk(String chunkId){
 		System.out.println("Inside containsChunk");
 		ServerChunk chunk;
 		for(int i = 0; i < this.chunks.size(); i++){
 			chunk = this.chunks.get(i);
-			if(chunk.getId().compareTo(chunkName) == 0)
+			if(chunk.getId().compareTo(chunkId) == 0)
 				return true;
 		}
 		return false;
@@ -121,18 +121,19 @@ public class FileManager{
 	}
 	
 	public int getFileTotalChunks(String fileName){
-		File file = new File(this.getFilePathName(fileName));
+		File file = new File(fileName);
 		float size = (float) file.length();
+		System.out.println("Size: "+size);
 		
 		int total = (int) size/Server.MAX_CHUNK_SIZE+1;
-		
 		return total;
 	}
 	
-	public FileInputStream getInStream(String fileName){
+	
+	public FileInputStream getFileInStream(String filePath){
 		FileInputStream inStream = null;
 		try{
-			File inFile = new File(this.getFilePathName(fileName));
+			File inFile = new File(filePath);
 			inStream = new FileInputStream(inFile);
 		}
 		catch(IOException e){}
@@ -140,10 +141,33 @@ public class FileManager{
 		return inStream;
 	}
 	
-	public FileOutputStream getOutStream(String fileName){
+	public FileOutputStream getFileOutStream(String filePath){
 		FileOutputStream outStream = null;
 		try{
-			File outFile = new File(this.getFilePathName(fileName));
+			File outFile = new File(filePath);
+			outFile.createNewFile();
+			outStream = new FileOutputStream(outFile);
+		}
+		catch(IOException e){}
+		
+		return outStream;
+	}
+	
+	public FileInputStream getInStream(String fileId){
+		FileInputStream inStream = null;
+		try{
+			File inFile = new File(this.getFilePathName(fileId));
+			inStream = new FileInputStream(inFile);
+		}
+		catch(IOException e){}
+		
+		return inStream;
+	}
+	
+	public FileOutputStream getOutStream(String fileId){
+		FileOutputStream outStream = null;
+		try{
+			File outFile = new File(this.getFilePathName(fileId));
 			outFile.createNewFile();
 			outStream = new FileOutputStream(outFile);
 		}

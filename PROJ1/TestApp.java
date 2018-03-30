@@ -51,19 +51,6 @@ public class TestApp {
 		}
 	}
 	
-	 public void copy(InputStream in, OutputStream out) throws IOException {
-        System.out.println("using byte[] read/write");
-        byte[] b = new byte[BUF_SIZE];
-        int len;
-        while ((len = in.read(b)) >= 0) {
-			//System.out.println(len);
-            out.write(b, 0, len);
-        }
-        in.close();
-        out.close();
-    }
-	
-	
 	private void echo(){
 		String echoMsg;
 		String msg = String.join(" ",this.args);
@@ -78,21 +65,8 @@ public class TestApp {
 	
 	private void backup(){
 		System.out.println("Processing backup...");
-		
-		/*
-		FileInputStream inStream = null;
-		
+	
 		try{
-			inStream = new FileInputStream(new File(this.args[0]));
-		}
-		catch(Exception e){
-			System.err.println("File not found");
-			return;
-		}
-		*/
-		
-		try{
-			//this.copy(inStream, this.proxy.getOutputStream(this.args[0]));
 			this.proxy.backup(this.args[0], Integer.parseInt(this.args[1]));
 		}
 		catch(Exception e){
@@ -104,8 +78,7 @@ public class TestApp {
 	private void restore(){
 		System.out.println("Processing restore...");
 		try{
-			InputStream inStream = this.proxy.restore(this.args[0]);
-			copy(inStream, new FileOutputStream(new File(this.args[0])));
+			this.proxy.restore(this.args[0]);
 		}
 		catch(Exception e){
 			System.err.println("Failed to restore");

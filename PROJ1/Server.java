@@ -136,8 +136,9 @@ public class Server implements ServerInterf {
 		}
 		catch(IOException e){}
 		
-		//this.deleteSWDContent();
-		this.readSWDFiles();
+		this.deleteSWDContent();
+		
+		//this.readSWDFiles();
 		/*
 		if(args.length == 6){
 			if(args[5].compareTo("-clean") == 0){
@@ -182,10 +183,6 @@ public class Server implements ServerInterf {
 		}
 	}
 	
-	public OutputStream getOutputStream(String fileName) throws IOException {
-		return new RMIOutputStream(new RMIOutputStream.RMIOutputStreamImpl(this.fileManager.getOutStream(fileName)));
-	}
-	
 	public String echo(String msg){
 		this.printRequest("ECHO "+msg);
 		return msg;
@@ -194,25 +191,16 @@ public class Server implements ServerInterf {
 	public void backup(String fileName, int repDegree){
 		this.printRequest("BACKUP "+fileName+" "+repDegree);
 		Runnable handler = new BackUpProtocol(this, fileName, repDegree);
-		this.requests.put("BACKUP"+fileName, handler);
+		this.requests.put("BACKUP"+ServerFile.toId(fileName), handler);
 		this.pool.execute(handler);
 	}
 	
-	public InputStream restore(String fileName) throws IOException{
+	public void restore(String fileName) throws RemoteException {
 		this.printRequest("RESTORE "+fileName);
-		PipedOutputStream outPipe = new PipedOutputStream();
-		PipedInputStream inPipe;
-		try{
-			inPipe = new PipedInputStream(outPipe);
-		}
-		catch(IOException e){
-			System.err.println("Unable to open pipe");
-			return null;
-		}
-		Runnable handler = new RestoreProtocol(this, fileName, outPipe);
-		this.requests.put("RESTORE"+fileName, handler);
+		String fileId = ServerFile.toId(fileName);
+		Runnable handler = new RestoreProtocol(this, fileName, fileId);
+		this.requests.put("RESTORE"+ServerFile.toId(fileName), handler);
 		this.pool.execute(handler);
-		return new RMIInputStream(new RMIInputStream.RMIInputStreamImpl(inPipe));
 	}
 	
 	public void delete(String fileName){
@@ -222,7 +210,7 @@ public class Server implements ServerInterf {
 	
 	public void reclaim(int mem){
 		this.printRequest("RECLAIM "+mem);
-		System.out.println("Reclaiming");
+		this.pool.execute(new ReclaimProtocol(this, mem));
 	}
 	
 	public String state(){
@@ -277,6 +265,7 @@ public class Server implements ServerInterf {
 		}
 	}
 	
+	/*
 	private void readSWDFiles(){
 		String[] parts;
 		File[] files = this.SWD.toFile().listFiles();
@@ -294,6 +283,7 @@ public class Server implements ServerInterf {
 			}
 		}
 	}
+	*/
 	
 	class MCListener implements Runnable{
 		private Server server;

@@ -24,9 +24,7 @@ public class StoreChunk implements Runnable {
 	}
 	
 	@Override
-	public void run (){
-		/*System.out.println("Packet received at MDBsocket: " + new String(buf).trim());*/
-		
+	public void run (){	
 		if(this.parseRequest())
 			return;
 		
@@ -46,16 +44,12 @@ public class StoreChunk implements Runnable {
 	
 	private boolean parseRequest(){
 		System.out.println("Buf size: "+this.buf.length);
-		//System.out.println("Buf: "+ new String(this.buf));
 		System.out.println("Actual buf size: "+this.trueBufLength);
 		String msg = new String(this.buf);
 		String[] parts = msg.split("\r\n");
 		
-		//System.out.println(Arrays.toString(parts));
-		
 		//Parse header elements
 		String[] header = parts[0].split(" ");
-		//System.out.println(header[0].length());
 		this.version = header[1];
 		this.senderId = header[2];
 		this.fileId = header[3];
@@ -64,12 +58,10 @@ public class StoreChunk implements Runnable {
 		//Copy actual body
 		int headerLength = parts[0].length()+2;
 		int bodyLength = this.trueBufLength - headerLength;
-		//System.out.println("Actual body copied size: "+ bodyLength);
 		this.chunkBody = new byte[bodyLength];
 		System.arraycopy(this.buf, headerLength, this.chunkBody, 0, bodyLength);
 		
 		if(this.senderId.compareTo(""+this.server.getId()) != 0){
-			//System.out.println("Packet received at MDBsocket: " + Arrays.toString(header)+" with size "+this.chunkBody.length);
 			return false;
 		}
 		else
@@ -78,12 +70,9 @@ public class StoreChunk implements Runnable {
 	
 	private void saveChunk(String chunkFileName){
 		FileManager fileManager = this.server.getFileManager();
-		String filePathName = this.server.getSWD().toString()+"/"+ chunkFileName;
+		FileOutputStream outStream = fileManager.getOutStream(chunkFileName);
 		
 		try{
-			File outFile = new File(filePathName);
-			outFile.createNewFile();
-			FileOutputStream outStream = new FileOutputStream(outFile);
 			outStream.write(this.chunkBody,0,this.chunkBody.length);
 			outStream.close();
 		}
@@ -91,7 +80,6 @@ public class StoreChunk implements Runnable {
 			this.printErrMsg("Unable to save chunk");
 		}
 		
-		//fileManager.addFile(new ServerFile(chunkFileName,0,this.chunkBody.length));
 		fileManager.addChunk(new ServerChunk(chunkFileName,/*0,*/this.chunkBody.length));
 		//System.out.println(fileManager.toString());
 		System.out.println("Chunk nr "+this.chunkNr+" of file "+this.fileId+" saved");

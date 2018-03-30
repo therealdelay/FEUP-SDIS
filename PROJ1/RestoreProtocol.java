@@ -11,33 +11,34 @@ public class RestoreProtocol implements Runnable {
 	private final static int TIMEOUT = 5000;
 	
 	private Server server;
+	private String fileName;
 	private String fileId;
 	private int currChunk = 0;
 	private boolean received = false;
 	private byte[] buf;
 	private ReentrantLock lock;
 	
-	private OutputStream outStream;
+	private FileOutputStream outStream;
 	
-	public RestoreProtocol(Server server, String fileId, OutputStream outStream){
+	public RestoreProtocol(Server server, String fileName, String fileId){
 		this.server = server;
+		this.fileName = fileName;
 		this.fileId = fileId;
-		this.outStream = outStream;
 		this.lock = new ReentrantLock();
 	}
 	
 	@Override
 	public void run (){
 		FileManager fileManager = this.server.getFileManager();
-		int totalChunks = fileManager.getFileTotalChunks(this.fileId);
+		int totalChunks = fileManager.getFileTotalChunks(this.fileName);
 		System.out.println("Total Chunks: "+totalChunks);
-		String[] parts = this.fileId.split("\\.");
+		String[] parts = this.fileName.split("\\.");
 		String name = parts[0]+"Restore."+parts[1];
-		/*this.outStream = fileManager.getOutStream(name);*/
+		this.outStream = fileManager.getOutStream(name);
 		
 		for(int i = 0; i < totalChunks; i++){
 			if(!this.receiveChunk()){
-				this.exit_err("Unable to restore chunk "+this.currChunk+" of file "+this.fileId);
+				this.exit_err("Unable to restore chunk "+this.currChunk+" of file "+this.fileName);
 				return;
 			}
 			this.saveChunk();
@@ -80,7 +81,7 @@ public class RestoreProtocol implements Runnable {
 			this.outStream.write(this.buf,0,this.buf.length);
 		}
 		catch(IOException e){
-			this.printErrMsg("Unable to save chunk "+this.currChunk+" of file "+this.fileId);
+			this.printErrMsg("Unable to save chunk "+this.currChunk+" of file "+this.fileName);
 		}
 	}
 	
@@ -109,7 +110,7 @@ public class RestoreProtocol implements Runnable {
 		catch(IOException e){
 			this.printErrMsg("Unable to close input stream");
 		}
-		System.out.println("File "+this.fileId+" restored up with success");
+		System.out.println("File "+this.fileName+" restored up with success");
 		
 		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
 		requests.remove("RESTORE"+this.fileId);
@@ -127,7 +128,7 @@ public class RestoreProtocol implements Runnable {
 	}
 	
 	private void printErrMsg(String err){
-		System.err.println("Error restoring file "+this.fileId+": "+err);
+		System.err.println("Error restoring file "+this.fileName+": "+err);
 	}
 	
 	public void chunk(int chunk, byte[] buf){

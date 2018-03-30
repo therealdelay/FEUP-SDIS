@@ -9,23 +9,19 @@ import java.util.concurrent.locks.*;
 public class DeleteProtocol implements Runnable {
 	
 	private Server server;
+	private String fileName;
 	private String fileId;
 	
-	public DeleteProtocol(Server server, String fileId){
+	public DeleteProtocol(Server server, String fileName){
 		this.server = server;
-		this.fileId = fileId;
+		this.fileName = fileName;
+		this.fileId = ServerFile.toId(fileName);
 	}
 	
 	@Override
 	public void run (){
-		this.deleteOwnFiles();
+		this.server.getFileManager().removeAllChunks(this.fileId);
 		this.sendDeleteMsg();
-	}
-	
-	private void deleteOwnFiles(){
-		String id = this.fileId.split("\\.")[0];
-		FileManager fileManager = this.server.getFileManager();
-		fileManager.removeAllChunks(id);
 	}
 	
 	private void sendDeleteMsg(){
@@ -38,7 +34,7 @@ public class DeleteProtocol implements Runnable {
 			socket.send(packet);
 		}
 		catch(IOException e){
-			this.printErrMsg("Unable to send STORED message");
+			this.printErrMsg("Unable to send DELETE message");
 		}
 	}
 	
@@ -47,6 +43,6 @@ public class DeleteProtocol implements Runnable {
 	}
 	
 	private void printErrMsg(String err){
-		System.err.println("Error backing up file "+this.fileId+": "+err);
+		System.err.println("Error deleting file "+this.fileName+": "+err);
 	}
 }
