@@ -27,6 +27,7 @@ public class TestApp {
 	public TestApp(String[] args){
 		
 		this.url = "rmi://"+args[0];
+		System.out.println(this.url);
 		this.command = args[1].toUpperCase();;
 		
 		int argsLength = args.length-2;
@@ -78,6 +79,7 @@ public class TestApp {
 	private void backup(){
 		System.out.println("Processing backup...");
 		
+		/*
 		FileInputStream inStream = null;
 		
 		try{
@@ -87,9 +89,10 @@ public class TestApp {
 			System.err.println("File not found");
 			return;
 		}
+		*/
 		
 		try{
-			this.copy(inStream, this.proxy.getOutputStream(this.args[0]));
+			//this.copy(inStream, this.proxy.getOutputStream(this.args[0]));
 			this.proxy.backup(this.args[0], Integer.parseInt(this.args[1]));
 		}
 		catch(Exception e){

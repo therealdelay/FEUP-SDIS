@@ -6,11 +6,12 @@ import java.util.*;
 
 public class FileManager{
 	private ArrayList<ServerFile> files;
-	private Path WDir;
 	private ArrayList<ServerChunk> chunks;
+	private Path WDir;
 	
 	public FileManager(){
 		this.files = new ArrayList<ServerFile>();
+		this.chunks = new ArrayList<ServerChunk>();
 	}
 	
 	public void setWDir(Path WDir){
@@ -19,10 +20,12 @@ public class FileManager{
 	
 	public synchronized void addFile(ServerFile file){
 		this.files.add(file);
+		System.out.println(this.toString());
 	}
 	
-	public synchronized void addChunks(ServerChunk chunk){
+	public synchronized void addChunk(ServerChunk chunk){
 		this.chunks.add(chunk);
+		System.out.println(this.toString());
 	}
 
 	/*
@@ -77,10 +80,11 @@ public class FileManager{
 				if(chunk.getId().matches("(.*)"+id+"(.*)")){
 					this.chunks.remove(i);
 					//decChunkRepDeg
-					filesToRemove.add(chunks.getId());
+					filesToRemove.add(chunk.getId());
 					i--;
 				}
 			}
+			this.toString();
 		}
 		
 		File file;
@@ -90,7 +94,7 @@ public class FileManager{
 			file.delete();
 		}
 	}
-	
+		
 	public synchronized boolean containsFile(String fileName){
 		ServerFile file;
 		for(int i = 0; i < this.files.size(); i++){
@@ -102,6 +106,7 @@ public class FileManager{
 	}
 
 	public synchronized boolean containsChunk(String chunkName){
+		System.out.println("Inside containsChunk");
 		ServerChunk chunk;
 		for(int i = 0; i < this.chunks.size(); i++){
 			chunk = this.chunks.get(i);
@@ -112,7 +117,7 @@ public class FileManager{
 	}
 	
 	public synchronized String toString(){
-		return this.files.toString();
+		return this.files.toString()+System.lineSeparator()+this.chunks.toString();
 	}
 	
 	public int getFileTotalChunks(String fileName){

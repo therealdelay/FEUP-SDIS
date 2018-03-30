@@ -93,7 +93,7 @@ public class ControlProtocol implements Runnable {
 		String[] parts = this.fileId.split("\\.");
 		String fileName = parts[0]+"_"+this.chunkNr.trim()+".chunk";
 		
-		if(!fileManager.contains(fileName)){
+		if(!fileManager.containsChunk(fileName)){
 			this.printErrMsg("File "+fileName+" not found");
 			return;
 		}

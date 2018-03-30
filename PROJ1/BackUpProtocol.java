@@ -33,6 +33,9 @@ public class BackUpProtocol implements Runnable {
 	@Override
 	public void run (){
 		
+		FileManager fileManager = this.server.getFileManager();
+		fileManager.addFile(new ServerFile(this.fileId, this.replicationDeg));
+		
 		this.inStream = this.openSrcFile();
 		if(this.inStream == null){
 			this.exit_err("Unable to open src file");

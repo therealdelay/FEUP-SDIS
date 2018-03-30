@@ -39,7 +39,7 @@ public class Server implements ServerInterf {
 
 	
 	public static void main(String[] args){
-		if(args.length < 5 || args.length > 6){
+		if(args.length != 5){
 			Server.printUsage();
 			return;
 		}
@@ -136,13 +136,18 @@ public class Server implements ServerInterf {
 		}
 		catch(IOException e){}
 		
+		//this.deleteSWDContent();
+		this.readSWDFiles();
+		/*
 		if(args.length == 6){
 			if(args[5].compareTo("-clean") == 0){
-				this.deleteSWDContent();
+				
 			}
 		}
 		else
 			this.readSWDFiles();
+		*/
+		System.out.println(this.fileManager.toString());
 	}
 	
 	private void startListenerThreads(){
@@ -276,14 +281,18 @@ public class Server implements ServerInterf {
 		String[] parts;
 		File[] files = this.SWD.toFile().listFiles();
 		for(File file : files){
-			this.fileManager.addFile(new ServerFile(file.getName(),0,file.length()));
-			if(this.usedMem + file.length() <= this.MAX_MEM)
-				this.usedMem += file.length();
-			else
-				System.out.println("Not enough space to store this file.");
+			String[] nameParts = file.getName().split("\\.");
+			if(nameParts[0].compareTo("chunk") == 0){
+				this.fileManager.addChunk(new ServerChunk(file.getName(), file.length()));
+				if(this.usedMem + file.length() <= this.MAX_MEM)
+					this.usedMem += file.length();
+				else
+					System.out.println("Not enough space to store this file.");
+			}
+			else{
+				this.fileManager.addFile(new ServerFile(file.getName(),0));
+			}
 		}
-		
-		System.out.println(this.fileManager.toString());
 	}
 	
 	class MCListener implements Runnable{
