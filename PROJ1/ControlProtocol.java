@@ -17,6 +17,7 @@ public class ControlProtocol implements Runnable {
 	private String senderId;
 	private String fileId;
 	private String chunkNr;
+	private boolean sendChunk;
 	
 	public ControlProtocol(Server server, byte[] buf){
 		this.server = server;
@@ -87,6 +88,7 @@ public class ControlProtocol implements Runnable {
 	}
 	
 	private void processGetChunk(){
+		this.sendChunk = true;
 		System.out.println("Processing Get Chunk...");
 		FileManager fileManager = this.server.getFileManager();
 		
@@ -97,7 +99,6 @@ public class ControlProtocol implements Runnable {
 			this.printErrMsg("File "+fileName+" not found");
 			return;
 		}
-		
 		
 		FileInputStream inStream = fileManager.getInStream(fileName);
 		
@@ -116,7 +117,23 @@ public class ControlProtocol implements Runnable {
 		byte[] cleanBuf = new byte[read];
 		System.arraycopy(buf,0,cleanBuf,0,read);
 		
-		this.sendChunkMsg(cleanBuf);
+		int delay = this.getRandomTime();
+		System.out.println("Delay " + delay);
+		try{
+			TimeUnit.MILLISECONDS.sleep(delay);
+		}
+		catch(InterruptedException e){
+			System.out.println(e);
+		}
+		if(!this.server.restoreThreads.containsKey("CHUNK"+this.fileId+"_"+this.chunkNr)){
+			this.sendChunkMsg(cleanBuf);
+		}
+	}
+
+	private int getRandomTime(){
+		Random r = new Random();
+   		int n = r.nextInt(400);
+     	return n;
 	}
 	
 	private void processDelete(){
@@ -125,6 +142,7 @@ public class ControlProtocol implements Runnable {
 	}
 	
 	
+
 	private void sendChunkMsg(byte[] buf){
 		byte[] msg = this.getChunkMsg(buf);
 		TwinMulticastSocket socket = this.server.getMDRsocket();
@@ -137,6 +155,8 @@ public class ControlProtocol implements Runnable {
 		catch(IOException e){
 			this.printErrMsg("Unable to send CHUNK message");
 		}
+
+		this.server.restoreThreads.put("CHUNK"+this.fileId+"_"+this.chunkNr, this);
 	}
 	
 	private String getChunkHeader(){

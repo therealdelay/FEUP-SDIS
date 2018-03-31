@@ -64,8 +64,7 @@ public class TestApp {
 	}
 	
 	private void backup(){
-		System.out.println("Processing backup...");
-	
+		System.out.println("Backing up file " + this.args[0] + " with replication degree of " + this.args[1] + ".");
 		try{
 			this.proxy.backup(this.args[0], Integer.parseInt(this.args[1]));
 		}
@@ -73,10 +72,11 @@ public class TestApp {
 			System.err.println("Failed to send: BACKUP");
 			e.printStackTrace();
 		}
+		System.out.println("Backup processed.");
 	}
 	
 	private void restore(){
-		System.out.println("Processing restore...");
+		System.out.println("Restoring file " + this.args[0] + ".");
 		try{
 			this.proxy.restore(this.args[0]);
 		}
@@ -84,26 +84,30 @@ public class TestApp {
 			System.err.println("Failed to restore");
 			e.printStackTrace();
 		}
+		System.out.println("Restore processed.");
 	}
 	
 	private void delete(){
-		System.out.println("Processing restore...");
+		System.out.println("Deleting file " + this.args[0] + ".");
 		try{
 			this.proxy.delete(this.args[0]);
 		}
 		catch(Exception e){
 			System.err.println("Failed to delete");
 		}
+		System.out.println("Delete processed.");
 	}
 	
 	private void reclaim(){
-		System.out.println("Processing reclaim...");
+		int mem = 8*1024 - Integer.parseInt(this.args[0]);
+		System.out.println("Reclaiming " + mem + "KBytes of disk space.");
 		try{
 			this.proxy.delete(this.args[0]);
 		}
 		catch(Exception e){
 			System.err.println("Failed to reclaim");
 		}
+		System.out.println("Reclaim processed.");
 	}
 	
 	private void state(){

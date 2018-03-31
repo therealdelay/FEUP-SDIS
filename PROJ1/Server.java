@@ -29,6 +29,7 @@ public class Server implements ServerInterf {
 	private Path SWD;
 	
 	private ConcurrentHashMap<String,Runnable> requests;
+	public ConcurrentHashMap<String,Runnable> restoreThreads;
 	private FileManager fileManager;
 	
 	public final static int MAX_WAIT = 400;
@@ -75,6 +76,7 @@ public class Server implements ServerInterf {
 		
 		this.fileManager = new FileManager();
 		this.requests = new ConcurrentHashMap<String,Runnable>();
+		this.restoreThreads = new ConcurrentHashMap<String,Runnable>();
 		
 	    //Create Server Working Directory
 		this.createSWD(args);
@@ -302,7 +304,7 @@ public class Server implements ServerInterf {
 				try{
 					MCsocket.receive(packet);
 				}
-				catch(IOException e){
+				catch(IOException e){	
 					System.err.println("Error receiving MCsocket packet");
 				}
 				
@@ -312,7 +314,7 @@ public class Server implements ServerInterf {
 				handler.start();
 			}
 		}
-		
+
 	}
 	
 	class MDBListener implements Runnable{

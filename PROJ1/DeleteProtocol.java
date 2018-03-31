@@ -5,6 +5,7 @@ import java.lang.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
+import java.util.concurrent.TimeUnit;
 
 public class DeleteProtocol implements Runnable {
 	
@@ -21,7 +22,20 @@ public class DeleteProtocol implements Runnable {
 	@Override
 	public void run (){
 		this.server.getFileManager().removeAllChunks(this.fileId);
-		this.sendDeleteMsg();
+		int n = 3;
+		while(n > 0){
+			this.sendDeleteMsg();
+
+			int delay = this.getRandomFrequency();
+			try{
+				System.out.println("Waiting for " + delay + " seconds.");
+				TimeUnit.SECONDS.sleep(delay);
+			}
+			catch(InterruptedException e){
+				System.out.println(e);
+			}
+			n--;
+		}
 	}
 	
 	private void sendDeleteMsg(){
@@ -36,6 +50,12 @@ public class DeleteProtocol implements Runnable {
 		catch(IOException e){
 			this.printErrMsg("Unable to send DELETE message");
 		}
+	}
+
+	private int getRandomFrequency(){
+		Random r = new Random();
+		int n = r.nextInt(3)+1;
+		return n;
 	}
 	
 	private String getDeleteMsg(){
