@@ -68,6 +68,10 @@ public class ControlProtocol implements Runnable {
 				this.processDelete();
 				break;
 				
+			case "REMOVED":
+				this.processRemoved();
+				break;
+				
 			default:
 				this.printErrMsg("Unkown message");
 				break;
@@ -76,10 +80,19 @@ public class ControlProtocol implements Runnable {
 	
 	private void processStored(){
 		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
+		
+		//Lookup file backup processes
 		BackUpProtocol handler = (BackUpProtocol) requests.get("BACKUP"+this.fileId);
 		
 		if(handler != null){
-			//handler.test();
+			System.out.println("ControlProtocol: Notifying Backup");
+			handler.stored(Integer.parseInt(this.senderId), Integer.parseInt(this.chunkNr.trim()));
+		}
+		
+		//Lookup chunk backup processes
+		handler = (BackUpProtocol) requests.get("BACKUP"+this.fileId+this.chunkNr.trim());
+		
+		if(handler != null){
 			System.out.println("ControlProtocol: Notifying Backup");
 			handler.stored(Integer.parseInt(this.senderId), Integer.parseInt(this.chunkNr.trim()));
 		}
@@ -93,13 +106,14 @@ public class ControlProtocol implements Runnable {
 		FileManager fileManager = this.server.getFileManager();
 		
 		String[] parts = this.fileId.split("\\.");
-		String fileName = parts[0]+"_"+this.chunkNr.trim()+".chunk";
+		String chunkId = parts[0]+"_"+this.chunkNr.trim();
 		
-		if(!fileManager.containsChunk(fileName)){
-			this.printErrMsg("File "+fileName+" not found");
+		if(!fileManager.containsChunk(chunkId)){
+			this.printErrMsg("Chunk "+chunkId+" not found");
 			return;
 		}
 		
+		String fileName = chunkId+".chunk";
 		FileInputStream inStream = fileManager.getInStream(fileName);
 		
 		//Read
@@ -141,6 +155,18 @@ public class ControlProtocol implements Runnable {
 		this.server.getFileManager().removeAllChunks(this.fileId.trim());
 	}
 	
+	private void processRemoved(){
+		System.out.println("Processing Removed...");
+		this.fileId = this.fileId.trim();
+		int chunkN = Integer.parseInt(this.chunkNr.trim());
+		int peer = Integer.parseInt(this.senderId);
+		System.out.println("PeerId: "+peer);
+		if(this.server.getFileManager().decFileChunkRepDeg(this.fileId, chunkN, peer)){
+			System.out.println("Replication degree bellow required on chunk nr "+this.chunkNr+" of file "+this.fileId);
+			System.out.println("Starting chunk back up");
+			this.server.backupChunk(this.fileId,chunkN);
+		}
+	}
 	
 
 	private void sendChunkMsg(byte[] buf){

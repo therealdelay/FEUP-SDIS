@@ -14,33 +14,41 @@ public class BackUpProtocol implements Runnable {
 	private Server server;
 	private String fileName;
 	private String fileId;
+	private int chunkNr;
 	private int replicationDeg;
 	private ReentrantLock lock;
 	
-	private int currTry = 0;
-	private int currChunk = 0;
-	private ArrayList<Integer> peers;
+	//private int currTry = 0;
+	private int currChunk = -1;
+	private ArrayList<ArrayList<Integer>> chunkPeers;
 	
 	private FileInputStream inStream = null;
 	
 	public BackUpProtocol(Server server, String fileName, int replicationDeg){
 		this.server = server;
 		this.fileName = fileName;
+		this.chunkNr = -1;
 		this.replicationDeg = replicationDeg;
 		this.lock = new ReentrantLock();
-		this.peers = new ArrayList<Integer>();
+		this.chunkPeers = new ArrayList<ArrayList<Integer>>();
+	}
+	
+	public BackUpProtocol(Server server, String fileId, int chunkNr, int replicationDeg){
+		this.server = server;
+		this.fileId = fileId;
+		this.chunkNr = chunkNr;
+		this.lock = new ReentrantLock();
+		this.chunkPeers = new ArrayList<ArrayList<Integer>>();
 	}
 	
 	@Override
 	public void run (){
+		if(this.chunkNr == -1)
+			this.addFile();
+		else
+			this.readFile();
 		
-		ServerFile serverFile = new ServerFile(this.fileName, this.replicationDeg);
-		this.fileId = serverFile.getId(); 	//Get file id
-		
-		FileManager fileManager = this.server.getFileManager();
-		fileManager.addFile(serverFile);
-		
-		this.inStream = fileManager.getFileInStream(this.fileName);
+		this.inStream = this.server.getFileManager().getFileInStream(this.fileName);
 		if(this.inStream == null){
 			this.exit_err("Unable to open src file");
 			return;
@@ -51,14 +59,24 @@ public class BackUpProtocol implements Runnable {
 		
 		try{
 			while((read = this.inStream.read(buf)) >= 0){
-				byte[] body = new byte[read];
 				System.out.println("Bytes read: "+read);
+				this.currChunk++;
+				
+				if(this.chunkNr != -1){
+					if(this.currChunk != this.chunkNr)
+						continue;
+				}					
+				
+				byte[] body = new byte[read];
 				System.arraycopy(buf,0,body,0,read);
 				//System.out.println("Bytes body: "+body.length);
 				if(!this.backUpChunk(body)){
 					this.exit_err("Unable to reach required replication degree in chunk "+this.currChunk);
 					return;
 				}
+				
+				if(this.isChunkBackUp())
+					break;
 			}
 		}
 		catch(IOException e){
@@ -67,8 +85,37 @@ public class BackUpProtocol implements Runnable {
 		}
 		
 		this.exit();
+		
 	}
 	
+	private void addFile(){
+		ServerFile serverFile = new ServerFile(this.fileName, this.replicationDeg);
+		this.fileId = serverFile.getId(); 	//Get file id
+		
+		FileManager fileManager = this.server.getFileManager();
+		fileManager.addFile(serverFile);
+	}
+	
+	private void readFile(){
+		FileManager fileManager = this.server.getFileManager();
+		this.fileName = fileManager.getFilePath(this.fileId);
+		this.replicationDeg = fileManager.getFileRepDeg(this.fileId);
+	}
+		
+	private boolean isChunkBackUp(){
+		return this.chunkNr != -1 && this.currChunk == this.chunkNr;
+	}
+	
+	private ArrayList<Integer> getCurrChunkPeers(){
+		if(this.isChunkBackUp()){
+			System.out.println("BACKING UP A CHUNK");
+			return this.chunkPeers.get(0);
+		}
+		else{
+			System.out.println("BACKING UP A FILE");
+			return this.chunkPeers.get(this.currChunk);
+		}
+	}
 	
 	private String getPutChunkHeader(){
 		return "PUTCHUNK "+this.server.getVersion()+" "+this.server.getId()+" "+this.fileId+" "+this.currChunk+" "+this.replicationDeg;
@@ -83,7 +130,17 @@ public class BackUpProtocol implements Runnable {
 	}	
 	
 	private boolean backUpChunk(byte buf[]){
+		try{
+			this.lock.lock();
+			//System.out.println("HERE");
+			this.chunkPeers.add(new ArrayList<Integer>());
+		}
+		finally{
+			this.lock.unlock();
+		}
+		
 		boolean done = false;
+		
 		for(int i = 0; i < BackUpProtocol.MAX_TRIES; i++){
 			System.out.println(this.getPutChunkHeader());
 			byte[] msg = this.getPutChunkMsg(buf);
@@ -106,9 +163,8 @@ public class BackUpProtocol implements Runnable {
 			
 			try{
 				this.lock.lock();
-				if(this.peers.size() >= this.replicationDeg){
-					this.currChunk++;
-					this.peers.clear();
+				ArrayList<Integer> peers = this.getCurrChunkPeers();
+				if(peers.size() >= this.replicationDeg){
 					done = true;
 				}
 			}
@@ -120,8 +176,6 @@ public class BackUpProtocol implements Runnable {
 				return true;
 		}
 		
-		//this.currChunk++;
-		//return true;
 		return false;
 	}
 	
@@ -135,7 +189,10 @@ public class BackUpProtocol implements Runnable {
 		System.out.println("File "+this.fileName+" backed up with success");
 		
 		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
-		requests.remove("BACKUP"+this.fileId);
+		if(this.isChunkBackUp())
+			requests.remove("BACKUP"+this.fileId+this.chunkNr);
+		else
+			requests.remove("BACKUP"+this.fileId);
 	}
 	
 	private void exit_err(String err){
@@ -154,16 +211,13 @@ public class BackUpProtocol implements Runnable {
 	}
 	
 	public void stored(int id, int chunk){
+		System.out.println("Id: "+ id + " " + "Chunk: " + chunk);
 		try{
 			this.lock.lock();
-			
-			System.out.println("Id: "+ id + " " + "Chunk: " + chunk);
-			if(chunk == this.currChunk){
-				if(!this.peers.contains(id)){
-					this.peers.add(id);
-					FileManager fm = this.server.getFileManager();
-					//setChunkRepDegree
-				}
+			ArrayList<Integer> peers = this.getCurrChunkPeers();	
+			if(!peers.contains(id)){
+				peers.add(id);
+				this.server.getFileManager().incFileChunkRepDeg(this.fileId,chunk,id);
 			}
 		}
 		finally{

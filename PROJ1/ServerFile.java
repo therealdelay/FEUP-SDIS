@@ -5,21 +5,21 @@ import java.net.*;
 import java.lang.*;
 import java.security.*;
 import java.util.*;
+import java.util.stream.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
-
 
 public class ServerFile{
 	private String fileName;
 	private String id;
-	private ArrayList<Integer> chunksRepDeg;
+	private ArrayList<ArrayList<Integer>> chunksRepDeg;
 	private int replicationDeg;
 	
 	public ServerFile(String fileName, int replicationDeg){
 		this.fileName = fileName;
 		this.id = ServerFile.toId(fileName); 
 		this.replicationDeg = replicationDeg;
-		this.chunksRepDeg = new ArrayList<Integer>();
+		this.chunksRepDeg = new ArrayList<ArrayList<Integer>>();
 	}
 	
 	public String getFileName(){
@@ -48,24 +48,34 @@ public class ServerFile{
 		}
 	}
 	
-
 	public int getReplicationDeg(){
 		return this.replicationDeg;
 	}
 
-	public ArrayList<Integer> getChunksRepDeg(){
+	public ArrayList<ArrayList<Integer>> getChunksRepDeg(){
 		return this.chunksRepDeg;
 	}
-
-	public void incChunksRepDeg(int index){
-		this.chunksRepDeg.set(index,this.chunksRepDeg.get(index)+1);
+		
+	public void incChunksRepDeg(int chunkNr, int peerId){
+		while(this.chunksRepDeg.size() <= chunkNr){
+			this.chunksRepDeg.add(new ArrayList<Integer>());
+		}
+		ArrayList<Integer> peers = this.chunksRepDeg.get(chunkNr);
+		if(!peers.contains(peerId))
+			peers.add(peerId);
 	}
 
-	public void decChunksRepDeg(int index){
-		this.chunksRepDeg.set(index,this.chunksRepDeg.get(index)-1);
+	public boolean decChunksRepDeg(int chunkNr, int peerId){
+		ArrayList<Integer> peers = this.chunksRepDeg.get(chunkNr);
+		peers.remove(new Integer(peerId));
+		return peers.size() < this.replicationDeg;
 	}
 	
 	public String toString(){
-		return this.fileName+":"+this.id+":"+this.replicationDeg;
+		String lineSep = System.lineSeparator();
+		return  "	PathName: "+this.fileName+lineSep+
+				"	ID: "+this.id+lineSep+
+				"	Expected replication degree "+this.replicationDeg+lineSep+
+				"	Current chunks replication degree: "+ this.chunksRepDeg.stream().map(peers -> Integer.toString(peers.size())).collect(Collectors.joining(", "));
 	}
 }

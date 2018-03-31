@@ -3,11 +3,13 @@ import java.nio.file.*;
 import java.net.*;
 import java.lang.*;
 import java.util.*;
+import java.util.stream.*;
 
 public class FileManager{
 	private ArrayList<ServerFile> files;
 	private ArrayList<ServerChunk> chunks;
 	private Path WDir;
+	private int usedMem = 0;
 	
 	public FileManager(){
 		this.files = new ArrayList<ServerFile>();
@@ -25,7 +27,53 @@ public class FileManager{
 	
 	public synchronized void addChunk(ServerChunk chunk){
 		this.chunks.add(chunk);
+		this.usedMem += chunk.getSize();
 		System.out.println(this.toString());
+	}
+	
+	public synchronized void incFileChunkRepDeg(String fileId, int chunkNr, int peerId){
+		ServerFile file;
+		for(int i = 0; i < this.files.size(); i++){
+			file = this.files.get(i);
+			if(file.getId().compareTo(fileId) == 0){
+				file.incChunksRepDeg(chunkNr,peerId);
+				return;
+			}
+		}
+	}
+	
+	public synchronized boolean decFileChunkRepDeg(String fileId, int chunkNr, int peerId){
+		ServerFile file;
+		for(int i = 0; i < this.files.size(); i++){
+			file = this.files.get(i);
+			if(file.getId().compareTo(fileId) == 0){
+				return file.decChunksRepDeg(chunkNr,peerId);
+			}
+		}
+		
+		return false;
+	}
+	
+	public synchronized String getFilePath(String fileId){
+		ServerFile file;
+		for(int i = 0; i < this.files.size(); i++){
+			file = this.files.get(i);
+			if(file.getId().compareTo(fileId) == 0){
+				return file.getFileName();
+			}
+		}
+		return null;
+	}
+	
+	public synchronized int getFileRepDeg(String fileId){
+		ServerFile file;
+		for(int i = 0; i < this.files.size(); i++){
+			file = this.files.get(i);
+			if(file.getId().compareTo(fileId) == 0){
+				return file.getReplicationDeg();
+			}
+		}
+		return -1;
 	}
 
 	/*
@@ -49,25 +97,27 @@ public class FileManager{
 	}
 	*/
 
-	public void freeMem(int memToFree){
-		ArrayList<String> filesToRemove = new ArrayList<String>();
+	public ArrayList<ServerChunk> freeMem(int maxMem){
+		ArrayList<ServerChunk> chunksToRemove = new ArrayList<ServerChunk>();
 		synchronized(this.chunks){
 			ServerChunk chunk;
-			while(memToFree > 0){
+			while(this.usedMem > maxMem){
+				System.out.println("UsedMem: "+this.usedMem+" maxMem: "+maxMem);
 				chunk = this.chunks.get(0);
 				this.chunks.remove(0);
-				//decChunkRepDeg
-				filesToRemove.add(chunk.getId());
-				memToFree -= chunk.getSize();
+				chunksToRemove.add(chunk);
+				this.usedMem -= chunk.getSize();
 			}
 		}
 		
 		File file;
-		for(int i = 0; i < filesToRemove.size(); i++){
-			System.out.println("Deleting file: "+filesToRemove.get(i));
-			file = new File(this.getFilePathName(filesToRemove.get(i)));
+		for(int i = 0; i < chunksToRemove.size(); i++){
+			System.out.println("Deleting chunk: "+chunksToRemove.get(i).getId());
+			file = new File(this.getFilePathName(chunksToRemove.get(i).getFileName()));
 			file.delete();
 		}
+		
+		return chunksToRemove;
 	}
 	
 	public void removeAllChunks(String id){
@@ -79,7 +129,6 @@ public class FileManager{
 				chunk = this.chunks.get(i);
 				if(chunk.getId().matches("(.*)"+id+"(.*)")){
 					this.chunks.remove(i);
-					//decChunkRepDeg
 					filesToRemove.add(chunk.getId());
 					i--;
 				}
@@ -106,7 +155,6 @@ public class FileManager{
 	}
 
 	public synchronized boolean containsChunk(String chunkId){
-		System.out.println("Inside containsChunk");
 		ServerChunk chunk;
 		for(int i = 0; i < this.chunks.size(); i++){
 			chunk = this.chunks.get(i);
@@ -114,10 +162,6 @@ public class FileManager{
 				return true;
 		}
 		return false;
-	}
-	
-	public synchronized String toString(){
-		return this.files.toString()+System.lineSeparator()+this.chunks.toString();
 	}
 	
 	public int getFileTotalChunks(String fileName){
@@ -128,7 +172,6 @@ public class FileManager{
 		int total = (int) size/Server.MAX_CHUNK_SIZE+1;
 		return total;
 	}
-	
 	
 	public FileInputStream getFileInStream(String filePath){
 		FileInputStream inStream = null;
@@ -178,5 +221,19 @@ public class FileManager{
 	
 	private String getFilePathName(String fileName){
 		return this.WDir.toString()+"/"+fileName;
+	}
+	
+	public synchronized int getUsedMem(){
+		return this.usedMem;
+	}
+	
+	public synchronized String toString(){
+		String lineSep = System.lineSeparator();
+		String doubleLineSep = lineSep+lineSep;
+		return "Memory used: "+this.usedMem+" of "+Server.MAX_MEM+lineSep+
+			   "Files:"+lineSep+
+			   this.files.stream().map(Object::toString).collect(Collectors.joining(doubleLineSep))+doubleLineSep+
+			   "Chunks:"+lineSep+
+			   this.chunks.stream().map(Object::toString).collect(Collectors.joining(doubleLineSep));
 	}
 }

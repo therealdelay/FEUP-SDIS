@@ -1,21 +1,17 @@
-/*
-import java.io.*;
-import java.nio.*;
-import java.net.*;
-import java.lang.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.locks.*;
-*/
 
 public class ServerChunk{
 	private String id;
-	//private int replicationDeg;
+	private String fileId;
+	private int chunkNr;
 	private long size;
 	
-	public ServerChunk(String id,/* int replicationDeg,*/ long size){
+	public ServerChunk(String id, long size){
 		this.id  = id;
-		// this.replicationDeg = replicationDeg;
+		
+		String[] parts = this.id.split("\\.")[0].split("_");
+		this.fileId = parts[0];
+		this.chunkNr = Integer.parseInt(parts[1]);
+		
 		this.size = size;
 	}
 	
@@ -23,18 +19,24 @@ public class ServerChunk{
 		return this.id;
 	}
 	
+	public String getFileId(){
+		return this.fileId;
+	}
+	
+	public String getFileName(){
+		return this.id+".chunk";
+	}
+	
+	public int getChunkNr(){
+		return this.chunkNr;
+	}
+	
 	public long getSize(){
 		return this.size;
 	}
-/*
-	public int getReplicationsDeg(){
-		return replicationDeg;
-	}
-	
+
 	public String toString(){
-		return this.id+":"+this.replicationDeg;
-	}*/
-	public String toString(){
-		return this.id+":"+this.size;
+		return "	ID: "+this.id+System.lineSeparator()+
+			   "	Size: "+this.size;
 	}
 }

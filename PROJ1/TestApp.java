@@ -102,7 +102,7 @@ public class TestApp {
 		int mem = 8*1024 - Integer.parseInt(this.args[0]);
 		System.out.println("Reclaiming " + mem + "KBytes of disk space.");
 		try{
-			this.proxy.delete(this.args[0]);
+			this.proxy.reclaim(Integer.parseInt(this.args[0]));
 		}
 		catch(Exception e){
 			System.err.println("Failed to reclaim");
