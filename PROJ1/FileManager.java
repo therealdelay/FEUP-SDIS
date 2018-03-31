@@ -31,23 +31,23 @@ public class FileManager{
 		System.out.println(this.toString());
 	}
 	
-	public synchronized void incFileChunkRepDeg(String fileId, int chunkNr){
+	public synchronized void incFileChunkRepDeg(String fileId, int chunkNr, int peerId){
 		ServerFile file;
 		for(int i = 0; i < this.files.size(); i++){
 			file = this.files.get(i);
 			if(file.getId().compareTo(fileId) == 0){
-				file.incChunksRepDeg(chunkNr);
+				file.incChunksRepDeg(chunkNr,peerId);
 				return;
 			}
 		}
 	}
 	
-	public synchronized boolean decFileChunkRepDeg(String fileId, int chunkNr){
+	public synchronized boolean decFileChunkRepDeg(String fileId, int chunkNr, int peerId){
 		ServerFile file;
 		for(int i = 0; i < this.files.size(); i++){
 			file = this.files.get(i);
 			if(file.getId().compareTo(fileId) == 0){
-				return file.decChunksRepDeg(chunkNr);
+				return file.decChunksRepDeg(chunkNr,peerId);
 			}
 		}
 		

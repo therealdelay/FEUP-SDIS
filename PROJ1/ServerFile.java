@@ -12,14 +12,14 @@ import java.util.concurrent.locks.*;
 public class ServerFile{
 	private String fileName;
 	private String id;
-	private ArrayList<Integer> chunksRepDeg;
+	private ArrayList<ArrayList<Integer>> chunksRepDeg;
 	private int replicationDeg;
 	
 	public ServerFile(String fileName, int replicationDeg){
 		this.fileName = fileName;
 		this.id = ServerFile.toId(fileName); 
 		this.replicationDeg = replicationDeg;
-		this.chunksRepDeg = new ArrayList<Integer>();
+		this.chunksRepDeg = new ArrayList<ArrayList<Integer>>();
 	}
 	
 	public String getFileName(){
@@ -52,20 +52,23 @@ public class ServerFile{
 		return this.replicationDeg;
 	}
 
-	public ArrayList<Integer> getChunksRepDeg(){
+	public ArrayList<ArrayList<Integer>> getChunksRepDeg(){
 		return this.chunksRepDeg;
 	}
 		
-	public void incChunksRepDeg(int chunkNr){
+	public void incChunksRepDeg(int chunkNr, int peerId){
 		while(this.chunksRepDeg.size() <= chunkNr){
-			this.chunksRepDeg.add(0);
+			this.chunksRepDeg.add(new ArrayList<Integer>());
 		}
-		this.chunksRepDeg.set(chunkNr,this.chunksRepDeg.get(chunkNr)+1);
+		ArrayList<Integer> peers = this.chunksRepDeg.get(chunkNr);
+		if(!peers.contains(peerId))
+			peers.add(peerId);
 	}
 
-	public boolean decChunksRepDeg(int chunkNr){
-		this.chunksRepDeg.set(chunkNr,this.chunksRepDeg.get(chunkNr)-1);
-		return this.chunksRepDeg.get(chunkNr) < this.replicationDeg;
+	public boolean decChunksRepDeg(int chunkNr, int peerId){
+		ArrayList<Integer> peers = this.chunksRepDeg.get(chunkNr);
+		peers.remove(new Integer(peerId));
+		return peers.size() < this.replicationDeg;
 	}
 	
 	public String toString(){
@@ -73,6 +76,6 @@ public class ServerFile{
 		return  "	PathName: "+this.fileName+lineSep+
 				"	ID: "+this.id+lineSep+
 				"	Expected replication degree "+this.replicationDeg+lineSep+
-				"	Current chunks replication degree: "+ this.chunksRepDeg.stream().map(Object::toString).collect(Collectors.joining(", "));
+				"	Current chunks replication degree: "+ this.chunksRepDeg.stream().map(peers -> Integer.toString(peers.size())).collect(Collectors.joining(", "));
 	}
 }

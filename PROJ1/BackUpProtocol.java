@@ -217,7 +217,7 @@ public class BackUpProtocol implements Runnable {
 			ArrayList<Integer> peers = this.getCurrChunkPeers();	
 			if(!peers.contains(id)){
 				peers.add(id);
-				this.server.getFileManager().incFileChunkRepDeg(this.fileId,chunk);
+				this.server.getFileManager().incFileChunkRepDeg(this.fileId,chunk,id);
 			}
 		}
 		finally{

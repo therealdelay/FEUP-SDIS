@@ -141,7 +141,9 @@ public class ControlProtocol implements Runnable {
 		System.out.println("Processing Removed...");
 		this.fileId = this.fileId.trim();
 		int chunkN = Integer.parseInt(this.chunkNr.trim());
-		if(this.server.getFileManager().decFileChunkRepDeg(this.fileId, chunkN)){
+		int peer = Integer.parseInt(this.senderId);
+		System.out.println("PeerId: "+peer);
+		if(this.server.getFileManager().decFileChunkRepDeg(this.fileId, chunkN, peer)){
 			System.out.println("Replication degree bellow required on chunk nr "+this.chunkNr+" of file "+this.fileId);
 			System.out.println("Starting chunk back up");
 			this.server.backupChunk(this.fileId,chunkN);
