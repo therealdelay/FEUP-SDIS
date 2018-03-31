@@ -30,13 +30,11 @@ public class Server implements ServerInterf {
 	
 	private ConcurrentHashMap<String,Runnable> requests;
 	private FileManager fileManager;
-	
+		
 	public final static int MAX_WAIT = 400;
 	public final static int MAX_CHUNK_SIZE = 64000;
 	private final static int MAX_BUFFER_SIZE = 70000;
 	public final static int MAX_MEM = 8388608;
-	public static int usedMem = 0;
-
 	
 	public static void main(String[] args){
 		if(args.length != 5){
@@ -192,6 +190,13 @@ public class Server implements ServerInterf {
 		this.printRequest("BACKUP "+fileName+" "+repDegree);
 		Runnable handler = new BackUpProtocol(this, fileName, repDegree);
 		this.requests.put("BACKUP"+ServerFile.toId(fileName), handler);
+		this.pool.execute(handler);
+	}
+	
+	public void backupChunk(String fileId, int chunkNr){
+		System.out.println("Backing up file "+fileId+" chunk "+chunkNr);
+		Runnable handler = new BackUpProtocol(this, fileId, chunkNr, 0);
+		this.requests.put("BACKUP"+fileId+chunkNr, handler);
 		this.pool.execute(handler);
 	}
 	

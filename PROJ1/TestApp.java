@@ -99,7 +99,7 @@ public class TestApp {
 	private void reclaim(){
 		System.out.println("Processing reclaim...");
 		try{
-			this.proxy.delete(this.args[0]);
+			this.proxy.reclaim(Integer.parseInt(this.args[0]));
 		}
 		catch(Exception e){
 			System.err.println("Failed to reclaim");

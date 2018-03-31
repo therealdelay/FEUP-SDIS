@@ -31,10 +31,10 @@ public class StoreChunk implements Runnable {
 		FileManager fileManager = this.server.getFileManager();
 	
 		String[] parts = this.fileId.split("\\.");
-		String chunkFileName = parts[0]+"_"+this.chunkNr+".chunk";
+		String chunkId = parts[0]+"_"+this.chunkNr;
 		
-		if(!fileManager.containsChunk(chunkFileName))
-			this.saveChunk(chunkFileName);
+		if(!fileManager.containsChunk(chunkId))
+			this.saveChunk(chunkId);
 		else
 			this.printErrMsg("Already saved");
 		
@@ -68,7 +68,8 @@ public class StoreChunk implements Runnable {
 			return true;
 	}
 	
-	private void saveChunk(String chunkFileName){
+	private void saveChunk(String chunkId){
+		String chunkFileName = chunkId+".chunk";
 		FileManager fileManager = this.server.getFileManager();
 		FileOutputStream outStream = fileManager.getOutStream(chunkFileName);
 		
@@ -80,8 +81,7 @@ public class StoreChunk implements Runnable {
 			this.printErrMsg("Unable to save chunk");
 		}
 		
-		fileManager.addChunk(new ServerChunk(chunkFileName,/*0,*/this.chunkBody.length));
-		//System.out.println(fileManager.toString());
+		fileManager.addChunk(new ServerChunk(chunkId,/*0,*/this.chunkBody.length));
 		System.out.println("Chunk nr "+this.chunkNr+" of file "+this.fileId+" saved");
 	}
 	

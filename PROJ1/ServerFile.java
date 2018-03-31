@@ -5,9 +5,9 @@ import java.net.*;
 import java.lang.*;
 import java.security.*;
 import java.util.*;
+import java.util.stream.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
-
 
 public class ServerFile{
 	private String fileName;
@@ -48,7 +48,6 @@ public class ServerFile{
 		}
 	}
 	
-
 	public int getReplicationDeg(){
 		return this.replicationDeg;
 	}
@@ -56,16 +55,24 @@ public class ServerFile{
 	public ArrayList<Integer> getChunksRepDeg(){
 		return this.chunksRepDeg;
 	}
-
-	public void incChunksRepDeg(int index){
-		this.chunksRepDeg.set(index,this.chunksRepDeg.get(index)+1);
+		
+	public void incChunksRepDeg(int chunkNr){
+		while(this.chunksRepDeg.size() <= chunkNr){
+			this.chunksRepDeg.add(0);
+		}
+		this.chunksRepDeg.set(chunkNr,this.chunksRepDeg.get(chunkNr)+1);
 	}
 
-	public void decChunksRepDeg(int index){
-		this.chunksRepDeg.set(index,this.chunksRepDeg.get(index)-1);
+	public boolean decChunksRepDeg(int chunkNr){
+		this.chunksRepDeg.set(chunkNr,this.chunksRepDeg.get(chunkNr)-1);
+		return this.chunksRepDeg.get(chunkNr) < this.replicationDeg;
 	}
 	
 	public String toString(){
-		return this.fileName+":"+this.id+":"+this.replicationDeg;
+		String lineSep = System.lineSeparator();
+		return  "	PathName: "+this.fileName+lineSep+
+				"	ID: "+this.id+lineSep+
+				"	Expected replication degree "+this.replicationDeg+lineSep+
+				"	Current chunks replication degree: "+ this.chunksRepDeg.stream().map(Object::toString).collect(Collectors.joining(", "));
 	}
 }
