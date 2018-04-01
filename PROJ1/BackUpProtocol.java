@@ -196,14 +196,10 @@ public class BackUpProtocol implements Runnable {
 	
 	private void removeRequest(){
 		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
-		if(this.isChunkBackUp()){
-			System.out.println("Chunk "+this.chunkNr+" of file "+this.fileName+" backed up with success");
+		if(this.isChunkBackUp())
 			requests.remove("BACKUP"+this.fileId+this.chunkNr);
-		}
-		else{
-			System.out.println("File "+this.fileName+" backed up with success");
+		else
 			requests.remove("BACKUP"+this.fileId);
-		}
 	}
 	
 	private void exit(){
@@ -215,6 +211,11 @@ public class BackUpProtocol implements Runnable {
 		}
 		
 		this.removeRequest();
+		
+		if(this.isChunkBackUp())
+			System.out.println("Chunk "+this.chunkNr+" of file "+this.fileName+" backed up with success");
+		else
+			System.out.println("File "+this.fileName+" backed up with success");
 	}
 	
 	private void exit_err(String err){

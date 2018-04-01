@@ -109,10 +109,10 @@ public class FileManager{
 		
 		//Delete file if exists
 		synchronized(this.files){
-			ServerFile file;
+			ServerFile serverFile;
 			for(int i = 0; i < this.files.size(); i++){
-				file = this.files.get(i);
-				if(file.getId().compareTo(fileId) == 0){
+				serverFile = this.files.get(i);
+				if(serverFile.getId().compareTo(fileId) == 0){
 					this.files.remove(i);
 					break;
 				}
@@ -120,7 +120,7 @@ public class FileManager{
 		}
 		
 		//Delete chunks of fileId
-		ArrayList<String> filesToRemove = new ArrayList<String>();
+		ArrayList<String> chunksToRemove = new ArrayList<String>();
 		synchronized(this.chunks){
 			ServerChunk chunk;
 			for(int i = 0; i < this.chunks.size(); i++){
@@ -128,7 +128,7 @@ public class FileManager{
 				if(chunk.getId().matches("(.*)"+fileId+"(.*)")){
 					this.chunks.remove(i);
 					this.usedMem -= chunk.getSize();
-					filesToRemove.add(chunk.getId());
+					chunksToRemove.add(chunk.getId());
 					i--;
 				}
 			}
@@ -136,9 +136,11 @@ public class FileManager{
 		}
 		
 		File file;
-		for(int i = 0; i < filesToRemove.size(); i++){
-			System.out.println("Deleting file: "+filesToRemove.get(i));
-			file = new File(this.getSWDFilePathName(filesToRemove.get(i)));
+		String fileName;
+		for(int i = 0; i < chunksToRemove.size(); i++){
+			fileName = chunksToRemove.get(i)+".chunk";
+			System.out.println("Deleting file: "+fileName);
+			file = new File(this.getSWDFilePathName(fileName));
 			file.delete();
 		}
 	}
