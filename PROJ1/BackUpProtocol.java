@@ -18,7 +18,6 @@ public class BackUpProtocol implements Runnable {
 	private int replicationDeg;
 	private ReentrantLock lock;
 	
-	//private int currTry = 0;
 	private int currChunk = -1;
 	private ArrayList<ArrayList<Integer>> chunkPeers;
 	
@@ -43,8 +42,12 @@ public class BackUpProtocol implements Runnable {
 	
 	@Override
 	public void run (){
-		if(this.chunkNr == -1)
-			this.addFile();
+		
+		if(this.chunkNr == -1){
+			if(!this.addFile()){
+				return;
+			}
+		}
 		else
 			this.readFile();
 		
@@ -59,7 +62,6 @@ public class BackUpProtocol implements Runnable {
 		
 		try{
 			while((read = this.inStream.read(buf)) >= 0){
-				System.out.println("Bytes read: "+read);
 				this.currChunk++;
 				
 				if(this.chunkNr != -1){
@@ -69,7 +71,6 @@ public class BackUpProtocol implements Runnable {
 				
 				byte[] body = new byte[read];
 				System.arraycopy(buf,0,body,0,read);
-				//System.out.println("Bytes body: "+body.length);
 				if(!this.backUpChunk(body)){
 					this.exit_err("Unable to reach required replication degree in chunk "+this.currChunk);
 					return;
@@ -88,12 +89,27 @@ public class BackUpProtocol implements Runnable {
 		
 	}
 	
-	private void addFile(){
+	private boolean addFile(){
+		File file = new File(this.fileName);
+		if(!file.exists()){
+			this.exit_err("File not found");
+			return false;
+		}
+		
 		ServerFile serverFile = new ServerFile(this.fileName, this.replicationDeg);
-		this.fileId = serverFile.getId(); 	//Get file id
+		
+		//Get file id
+		
+		this.fileId = serverFile.getId(); 	
 		
 		FileManager fileManager = this.server.getFileManager();
-		fileManager.addFile(serverFile);
+		
+		if(!fileManager.addFile(serverFile)){
+			this.exit_err("File already backed up");
+			return false;
+		}
+		
+		return true;
 	}
 	
 	private void readFile(){
@@ -108,11 +124,11 @@ public class BackUpProtocol implements Runnable {
 	
 	private ArrayList<Integer> getCurrChunkPeers(){
 		if(this.isChunkBackUp()){
-			System.out.println("BACKING UP A CHUNK");
+			//System.out.println("BACKING UP A CHUNK");
 			return this.chunkPeers.get(0);
 		}
 		else{
-			System.out.println("BACKING UP A FILE");
+			//System.out.println("BACKING UP A FILE");
 			return this.chunkPeers.get(this.currChunk);
 		}
 	}
@@ -132,7 +148,6 @@ public class BackUpProtocol implements Runnable {
 	private boolean backUpChunk(byte buf[]){
 		try{
 			this.lock.lock();
-			//System.out.println("HERE");
 			this.chunkPeers.add(new ArrayList<Integer>());
 		}
 		finally{
@@ -144,7 +159,6 @@ public class BackUpProtocol implements Runnable {
 		for(int i = 0; i < BackUpProtocol.MAX_TRIES; i++){
 			System.out.println(this.getPutChunkHeader());
 			byte[] msg = this.getPutChunkMsg(buf);
-			System.out.println("Msg size: "+msg.length);
 			TwinMulticastSocket socket = this.server.getMDBsocket();
 			DatagramPacket packet = new DatagramPacket(msg, msg.length, socket.getGroup(), socket.getPort());
 			try{
@@ -179,6 +193,19 @@ public class BackUpProtocol implements Runnable {
 		return false;
 	}
 	
+	
+	private void removeRequest(){
+		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
+		if(this.isChunkBackUp()){
+			System.out.println("Chunk "+this.chunkNr+" of file "+this.fileName+" backed up with success");
+			requests.remove("BACKUP"+this.fileId+this.chunkNr);
+		}
+		else{
+			System.out.println("File "+this.fileName+" backed up with success");
+			requests.remove("BACKUP"+this.fileId);
+		}
+	}
+	
 	private void exit(){
 		try{
 			this.inStream.close();
@@ -186,13 +213,8 @@ public class BackUpProtocol implements Runnable {
 		catch(IOException e){
 			this.printErrMsg("Unable to close input stream");
 		}
-		System.out.println("File "+this.fileName+" backed up with success");
 		
-		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
-		if(this.isChunkBackUp())
-			requests.remove("BACKUP"+this.fileId+this.chunkNr);
-		else
-			requests.remove("BACKUP"+this.fileId);
+		this.removeRequest();
 	}
 	
 	private void exit_err(String err){
@@ -204,7 +226,10 @@ public class BackUpProtocol implements Runnable {
 		catch(IOException e){
 			this.printErrMsg("Unable to close input stream");
 		}
+		
+		this.removeRequest();
 	}
+	
 	
 	private void printErrMsg(String err){
 		System.err.println("Error backing up file "+this.fileName+": "+err);
@@ -212,12 +237,12 @@ public class BackUpProtocol implements Runnable {
 	
 	public void stored(int id, int chunk){
 		System.out.println("Id: "+ id + " " + "Chunk: " + chunk);
+		this.server.getFileManager().incFileChunkRepDeg(this.fileId,chunk,id);
 		try{
 			this.lock.lock();
-			ArrayList<Integer> peers = this.getCurrChunkPeers();	
+			ArrayList<Integer> peers = this.getCurrChunkPeers();			
 			if(!peers.contains(id)){
 				peers.add(id);
-				this.server.getFileManager().incFileChunkRepDeg(this.fileId,chunk,id);
 			}
 		}
 		finally{

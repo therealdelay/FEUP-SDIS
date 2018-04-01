@@ -20,9 +20,15 @@ public class FileManager{
 		this.WDir = WDir;
 	}
 	
-	public synchronized void addFile(ServerFile file){
-		this.files.add(file);
+	public boolean addFile(ServerFile newFile){
+		if(this.containsFile(newFile.getId()))
+			return false;
+		
+		synchronized(this.files){
+			this.files.add(newFile);
+		}
 		System.out.println(this.toString());
+		return true;
 	}
 	
 	public synchronized void addChunk(ServerChunk chunk){
@@ -59,7 +65,7 @@ public class FileManager{
 		for(int i = 0; i < this.files.size(); i++){
 			file = this.files.get(i);
 			if(file.getId().compareTo(fileId) == 0){
-				return file.getFileName();
+				return file.getPathName();
 			}
 		}
 		return null;
@@ -75,27 +81,6 @@ public class FileManager{
 		}
 		return -1;
 	}
-
-	/*
-	public void removeFile(String fileName){
-		
-		ArrayList<String> filesToRemove = new ArrayList<String>();
-		synchronized(this.files){
-			ServerFile file;
-			for(int i = 0; i < this.files.size(); i++){
-				file = this.files.get(i);
-				if(file.getId().matches("(.*)"+id+"(.*)")){
-					this.files.remove(i);
-					filesToRemove.add(file.getId());
-					i--;
-				}
-			}
-		}
-		
-		File file = new File(this.getFilePathName(fileName));
-		file.delete();
-	}
-	*/
 
 	public ArrayList<ServerChunk> freeMem(int maxMem){
 		ArrayList<ServerChunk> chunksToRemove = new ArrayList<ServerChunk>();
@@ -113,22 +98,36 @@ public class FileManager{
 		File file;
 		for(int i = 0; i < chunksToRemove.size(); i++){
 			System.out.println("Deleting chunk: "+chunksToRemove.get(i).getId());
-			file = new File(this.getFilePathName(chunksToRemove.get(i).getFileName()));
+			file = new File(this.getSWDFilePathName(chunksToRemove.get(i).getFileName()));
 			file.delete();
 		}
 		
 		return chunksToRemove;
 	}
 	
-	public void removeAllChunks(String id){
+	public void removeAllChunks(String fileId){
 		
+		//Delete file if exists
+		synchronized(this.files){
+			ServerFile file;
+			for(int i = 0; i < this.files.size(); i++){
+				file = this.files.get(i);
+				if(file.getId().compareTo(fileId) == 0){
+					this.files.remove(i);
+					break;
+				}
+			}
+		}
+		
+		//Delete chunks of fileId
 		ArrayList<String> filesToRemove = new ArrayList<String>();
 		synchronized(this.chunks){
 			ServerChunk chunk;
 			for(int i = 0; i < this.chunks.size(); i++){
 				chunk = this.chunks.get(i);
-				if(chunk.getId().matches("(.*)"+id+"(.*)")){
+				if(chunk.getId().matches("(.*)"+fileId+"(.*)")){
 					this.chunks.remove(i);
+					this.usedMem -= chunk.getSize();
 					filesToRemove.add(chunk.getId());
 					i--;
 				}
@@ -139,7 +138,7 @@ public class FileManager{
 		File file;
 		for(int i = 0; i < filesToRemove.size(); i++){
 			System.out.println("Deleting file: "+filesToRemove.get(i));
-			file = new File(this.getFilePathName(filesToRemove.get(i)));
+			file = new File(this.getSWDFilePathName(filesToRemove.get(i)));
 			file.delete();
 		}
 	}
@@ -184,6 +183,10 @@ public class FileManager{
 		return inStream;
 	}
 	
+	private String getSWDFilePathName(String fileName){
+		return this.WDir.toString()+"/"+fileName;
+	}
+	
 	public FileOutputStream getFileOutStream(String filePath){
 		FileOutputStream outStream = null;
 		try{
@@ -196,10 +199,10 @@ public class FileManager{
 		return outStream;
 	}
 	
-	public FileInputStream getInStream(String fileId){
+	public FileInputStream getInStream(String fileName){
 		FileInputStream inStream = null;
 		try{
-			File inFile = new File(this.getFilePathName(fileId));
+			File inFile = new File(this.getSWDFilePathName(fileName));
 			inStream = new FileInputStream(inFile);
 		}
 		catch(IOException e){}
@@ -207,10 +210,10 @@ public class FileManager{
 		return inStream;
 	}
 	
-	public FileOutputStream getOutStream(String fileId){
+	public FileOutputStream getOutStream(String fileName){
 		FileOutputStream outStream = null;
 		try{
-			File outFile = new File(this.getFilePathName(fileId));
+			File outFile = new File(this.getSWDFilePathName(fileName));
 			outFile.createNewFile();
 			outStream = new FileOutputStream(outFile);
 		}
@@ -219,8 +222,9 @@ public class FileManager{
 		return outStream;
 	}
 	
-	private String getFilePathName(String fileName){
-		return this.WDir.toString()+"/"+fileName;
+	public void deleteSWDFile(String fileName){
+		File file = new File(this.getSWDFilePathName(fileName));
+		file.delete();
 	}
 	
 	public synchronized int getUsedMem(){

@@ -43,8 +43,6 @@ public class StoreChunk implements Runnable {
 	
 	
 	private boolean parseRequest(){
-		System.out.println("Buf size: "+this.buf.length);
-		System.out.println("Actual buf size: "+this.trueBufLength);
 		String msg = new String(this.buf);
 		String[] parts = msg.split("\r\n");
 		

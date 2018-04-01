@@ -38,7 +38,7 @@ public class ControlProtocol implements Runnable {
 		String[] parts = msg.split("\r\n");
 		
 		//Parse header elements
-		String[] header = parts[0].split(" ");
+		String[] header = parts[0].trim().split(" ");
 		this.msgType = header[0];
 		this.version = header[1];
 		this.senderId = header[2];
@@ -47,7 +47,6 @@ public class ControlProtocol implements Runnable {
 			this.chunkNr = header[4];
 			
 		if(this.senderId.compareTo(""+this.server.getId()) == 0){
-			//System.out.println("Packet received at MCsocket: " + Arrays.toString(header));
 			return true;
 		}
 			
@@ -86,18 +85,16 @@ public class ControlProtocol implements Runnable {
 		
 		if(handler != null){
 			System.out.println("ControlProtocol: Notifying Backup");
-			handler.stored(Integer.parseInt(this.senderId), Integer.parseInt(this.chunkNr.trim()));
+			handler.stored(Integer.parseInt(this.senderId), Integer.parseInt(this.chunkNr));
 		}
 		
 		//Lookup chunk backup processes
-		handler = (BackUpProtocol) requests.get("BACKUP"+this.fileId+this.chunkNr.trim());
+		handler = (BackUpProtocol) requests.get("BACKUP"+this.fileId+this.chunkNr);
 		
 		if(handler != null){
-			System.out.println("ControlProtocol: Notifying Backup");
-			handler.stored(Integer.parseInt(this.senderId), Integer.parseInt(this.chunkNr.trim()));
+			System.out.println("ControlProtocol: Notifying Chunk Backup");
+			handler.stored(Integer.parseInt(this.senderId), Integer.parseInt(this.chunkNr));
 		}
-		
-		/*this.printErrMsg("Null handler");*/
 	}
 	
 	private void processGetChunk(){
@@ -106,7 +103,7 @@ public class ControlProtocol implements Runnable {
 		FileManager fileManager = this.server.getFileManager();
 		
 		String[] parts = this.fileId.split("\\.");
-		String chunkId = parts[0]+"_"+this.chunkNr.trim();
+		String chunkId = parts[0]+"_"+this.chunkNr;
 		
 		if(!fileManager.containsChunk(chunkId)){
 			this.printErrMsg("Chunk "+chunkId+" not found");
@@ -152,19 +149,15 @@ public class ControlProtocol implements Runnable {
 	
 	private void processDelete(){
 		System.out.println("Processing Delete...");
-		this.server.getFileManager().removeAllChunks(this.fileId.trim());
+		this.server.getFileManager().removeAllChunks(this.fileId);
 	}
 	
 	private void processRemoved(){
-		System.out.println("Processing Removed...");
-		this.fileId = this.fileId.trim();
-		int chunkN = Integer.parseInt(this.chunkNr.trim());
-		int peer = Integer.parseInt(this.senderId);
-		System.out.println("PeerId: "+peer);
-		if(this.server.getFileManager().decFileChunkRepDeg(this.fileId, chunkN, peer)){
+		//System.out.println("Processing Removed...");
+		if(this.server.getFileManager().decFileChunkRepDeg(this.fileId, Integer.parseInt(this.chunkNr), Integer.parseInt(this.senderId))){
 			System.out.println("Replication degree bellow required on chunk nr "+this.chunkNr+" of file "+this.fileId);
-			System.out.println("Starting chunk back up");
-			this.server.backupChunk(this.fileId,chunkN);
+			//System.out.println("Starting chunk back up");
+			this.server.backupChunk(this.fileId,Integer.parseInt(this.chunkNr));
 		}
 	}
 	

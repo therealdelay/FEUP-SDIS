@@ -45,13 +45,12 @@ public class Chunk implements Runnable {
 	
 	
 	private boolean parseRequest(){
-		//System.out.println("Buf size: "+this.buf.length);
-		//System.out.println("Actual buf size: "+this.trueBufLength);
 		String msg = new String(this.buf);
-		//System.out.println(msg);
 		String[] parts = msg.split("\r\n");
 		
 		//Parse header elements
+		System.out.println(parts[0].length());
+		System.out.println(parts[0].trim().length());
 		String[] header = parts[0].split(" ");
 		this.version = header[1];
 		this.senderId = header[2];

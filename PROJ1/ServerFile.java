@@ -10,30 +10,41 @@ import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
 public class ServerFile{
-	private String fileName;
+	private String pathName;
 	private String id;
 	private ArrayList<ArrayList<Integer>> chunksRepDeg;
 	private int replicationDeg;
 	
 	public ServerFile(String fileName, int replicationDeg){
-		this.fileName = fileName;
-		this.id = ServerFile.toId(fileName); 
+		this.pathName = ServerFile.toPathName(fileName);
+		this.id = ServerFile.toId(fileName);
 		this.replicationDeg = replicationDeg;
 		this.chunksRepDeg = new ArrayList<ArrayList<Integer>>();
 	}
 	
-	public String getFileName(){
-		return this.fileName;
+	public String getPathName(){
+		return this.pathName;
 	}
 	
 	public String getId(){
 		return this.id;
 	}
 	
+	public static String toRelativeName(String fileName){
+		File file = new File(fileName);
+		return file.getName();
+	}
+	
+	public static String toPathName(String fileName){
+		File file = new File(fileName);
+		return file.getAbsolutePath();
+	}
+	
 	public static String toId(String fileName){
-		try{ 
+		String path = ServerFile.toPathName(fileName);
+		try{
 			MessageDigest digest = MessageDigest.getInstance("SHA-256"); 
-			byte[] hash = digest.digest(fileName.getBytes("UTF-8")); 
+			byte[] hash = digest.digest(path.getBytes("UTF-8")); 
 			StringBuffer hexString = new StringBuffer(); 
 			for (int i = 0; i < hash.length; i++) {
 				String hex = Integer.toHexString(0xff & hash[i]); 
@@ -73,7 +84,7 @@ public class ServerFile{
 	
 	public String toString(){
 		String lineSep = System.lineSeparator();
-		return  "	PathName: "+this.fileName+lineSep+
+		return  "	PathName: "+this.pathName+lineSep+
 				"	ID: "+this.id+lineSep+
 				"	Expected replication degree "+this.replicationDeg+lineSep+
 				"	Current chunks replication degree: "+ this.chunksRepDeg.stream().map(peers -> Integer.toString(peers.size())).collect(Collectors.joining(", "));

@@ -32,9 +32,7 @@ public class RestoreProtocol implements Runnable {
 		FileManager fileManager = this.server.getFileManager();
 		int totalChunks = fileManager.getFileTotalChunks(this.fileName);
 		System.out.println("Total Chunks: "+totalChunks);
-		String[] parts = this.fileName.split("\\.");
-		String name = parts[0]+"Restore."+parts[1];
-		this.outStream = fileManager.getOutStream(name);
+		this.outStream = fileManager.getOutStream(ServerFile.toRelativeName(this.fileName));
 		
 		for(int i = 0; i < totalChunks; i++){
 			if(!this.receiveChunk()){
@@ -103,6 +101,11 @@ public class RestoreProtocol implements Runnable {
 		return "GETCHUNK "+this.server.getVersion()+" "+this.server.getId()+" "+this.fileId+" "+this.currChunk;
 	}
 	
+	private void removeRequest(){
+		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
+		requests.remove("RESTORE"+this.fileId);
+	}
+	
 	private void exit(){
 		try{
 			this.outStream.close();
@@ -112,8 +115,7 @@ public class RestoreProtocol implements Runnable {
 		}
 		System.out.println("File "+this.fileName+" restored up with success");
 		
-		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
-		requests.remove("RESTORE"+this.fileId);
+		this.removeRequest();
 	}
 	
 	private void exit_err(String err){
@@ -125,6 +127,9 @@ public class RestoreProtocol implements Runnable {
 		catch(IOException e){
 			this.printErrMsg("Unable to close output stream");
 		}
+		
+		this.server.getFileManager().deleteSWDFile(ServerFile.toRelativeName(this.fileName));
+		this.removeRequest();
 	}
 	
 	private void printErrMsg(String err){

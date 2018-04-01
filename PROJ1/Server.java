@@ -69,7 +69,9 @@ public class Server implements ServerInterf {
 			this.MDRsocket = new TwinMulticastSocket(args[4]);
 		}
 		catch(IOException e){
+			System.err.println("Error setting up multicast sockets");
 			this.disconnect();
+			System.exit(1);
 		}
 		
 		this.fileManager = new FileManager();
@@ -80,7 +82,7 @@ public class Server implements ServerInterf {
 		this.createSWD(args);
 		this.fileManager.setWDir(this.SWD);
 		
-		this.pool = new ThreadPoolExecutor(2,4,10,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(2));
+		this.pool = new ThreadPoolExecutor(5,10,10,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(10));
 		
 		//Start multicast channels listener threads
 		this.startListenerThreads();
@@ -106,15 +108,14 @@ public class Server implements ServerInterf {
 			this.rmiRegistry = LocateRegistry.createRegistry(port);
 		}
 		catch(Exception e){
-			
-			System.out.println("Registry already exists new registry");
-			
+						
 			try{
 				this.rmiRegistry = LocateRegistry.getRegistry(port);
 			}
 			catch(Exception e2){
-				System.err.println("Server exception: " + e.toString());
+				System.err.println("Unable to locate registry");
 				e.printStackTrace();
+				System.exit(1);
 			}
 		}
 		
@@ -137,17 +138,6 @@ public class Server implements ServerInterf {
 		catch(IOException e){}
 		
 		this.deleteSWDContent();
-		
-		//this.readSWDFiles();
-		/*
-		if(args.length == 6){
-			if(args[5].compareTo("-clean") == 0){
-				
-			}
-		}
-		else
-			this.readSWDFiles();
-		*/
 		System.out.println(this.fileManager.toString());
 	}
 	
@@ -181,6 +171,8 @@ public class Server implements ServerInterf {
 				System.err.println("Error disconnecting Server");
 			}
 		}
+		
+		System.exit(1);
 	}
 	
 	public String echo(String msg){
@@ -196,7 +188,6 @@ public class Server implements ServerInterf {
 	}
 	
 	public void backupChunk(String fileId, int chunkNr){
-		System.out.println("Backing up file "+fileId+" chunk "+chunkNr);
 		Runnable handler = new BackUpProtocol(this, fileId, chunkNr, 0);
 		this.requests.put("BACKUP"+fileId+chunkNr, handler);
 		this.pool.execute(handler);
@@ -244,7 +235,6 @@ public class Server implements ServerInterf {
 	}
 	
 	public ConcurrentHashMap<String,Runnable> getRequests(){
-		//System.out.println(this.requests.toString());
 		return this.requests;
 	}
 	
@@ -271,26 +261,6 @@ public class Server implements ServerInterf {
 				file.delete();
 		}
 	}
-	
-	/*
-	private void readSWDFiles(){
-		String[] parts;
-		File[] files = this.SWD.toFile().listFiles();
-		for(File file : files){
-			String[] nameParts = file.getName().split("\\.");
-			if(nameParts[0].compareTo("chunk") == 0){
-				this.fileManager.addChunk(new ServerChunk(file.getName(), file.length()));
-				if(this.usedMem + file.length() <= this.MAX_MEM)
-					this.usedMem += file.length();
-				else
-					System.out.println("Not enough space to store this file.");
-			}
-			else{
-				this.fileManager.addFile(new ServerFile(file.getName(),0));
-			}
-		}
-	}
-	*/
 	
 	class MCListener implements Runnable{
 		private Server server;
@@ -345,7 +315,6 @@ public class Server implements ServerInterf {
 				
 				Thread handler = new Thread(new StoreChunk(this.server, packet.getData(), packet.getLength()));
 				handler.start();
-				//System.out.println("Packet received at MDBsocket: " + new String(packet.getData()).trim());
 			}
 		}
 		
@@ -374,7 +343,6 @@ public class Server implements ServerInterf {
 				
 				Thread handler = new Thread(new Chunk(this.server, packet.getData(), packet.getLength()));
 				handler.start();
-				//System.out.println("Packet received at MDRsocket: " + new String(packet.getData()).trim());
 			}
 		}
 	}
