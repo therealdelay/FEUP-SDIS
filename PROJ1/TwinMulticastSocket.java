@@ -17,7 +17,6 @@ public class TwinMulticastSocket {
 	
 	public TwinMulticastSocket(String compName) throws IOException{
 		String[] name = compName.split(":");
-		System.out.println(Arrays.toString(name));
 		
 		this.group = InetAddress.getByName(name[0]);
 		

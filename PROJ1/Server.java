@@ -47,7 +47,15 @@ public class Server implements ServerInterf {
 	}
 	
 	public static void printUsage(){
-		System.out.println("Wrong number of arguments");
+		String lineSep = System.lineSeparator();
+		String doubleLineSep = lineSep+lineSep;
+		String usage =  lineSep+
+						"   Server <version> <id> <MC> <MDB> <MDR>"+doubleLineSep+
+						"      version: version of the protocol with the format <n>.<m>"+doubleLineSep+
+						"      id: server and rmi identifier"+doubleLineSep+
+						"      MC,MDB,MDR: multicast channels with the format <ip>/<port>";
+						
+		System.out.println(usage);
 	}
 		
 	public Server(String args[]){
@@ -86,23 +94,13 @@ public class Server implements ServerInterf {
 		
 		//Start multicast channels listener threads
 		this.startListenerThreads();
+		
+		System.out.println("Server set up and running");
 	}
 	
 	
 	private void connectRMI(){
 		int port = Registry.REGISTRY_PORT;
-		
-		InetAddress localAddress = null;
-		try{
-			InetAddress address = InetAddress.getByName("localhost");
-			localAddress = InetAddress.getLocalHost();
-			System.out.println("Host address: " + address.getHostAddress()+" "+address.getHostName());
-			System.out.println("Host local address: " + localAddress.getHostAddress()+" "+localAddress.getHostName());
-		}
-		catch(Exception e){
-			e.printStackTrace();
-		}
-		
 		this.rmiRegistry = null;
 		try{
 			this.rmiRegistry = LocateRegistry.createRegistry(port);
@@ -122,7 +120,6 @@ public class Server implements ServerInterf {
 		try{
             ServerInterf proxy = (ServerInterf) UnicastRemoteObject.exportObject(this, 0);
 			String name = Integer.toString(this.id);
-			System.out.println(name);
             this.rmiRegistry.rebind(name, proxy);
 		} catch (Exception e) {
 			System.err.println("Unable to set up RMI");
@@ -138,7 +135,6 @@ public class Server implements ServerInterf {
 		catch(IOException e){}
 		
 		this.deleteSWDContent();
-		System.out.println(this.fileManager.toString());
 	}
 	
 	private void startListenerThreads(){
