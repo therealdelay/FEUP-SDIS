@@ -96,8 +96,8 @@ public class Server implements ServerInterf {
 		try{
 			InetAddress address = InetAddress.getByName("localhost");
 			localAddress = InetAddress.getLocalHost();
-			System.out.println(address.getHostAddress()+" "+address.getHostName());
-			System.out.println(localAddress.getHostAddress()+" "+localAddress.getHostName());
+			System.out.println("Host address: " + address.getHostAddress()+" "+address.getHostName());
+			System.out.println("Host local address: " + localAddress.getHostAddress()+" "+localAddress.getHostName());
 		}
 		catch(Exception e){
 			e.printStackTrace();
@@ -217,6 +217,7 @@ public class Server implements ServerInterf {
 	}
 	
 	private void printRequest(String request){
+		System.out.print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
 		System.out.println("----------------------");
 		System.out.println("Request received: "+request);
 		System.out.println("----------------------");
@@ -284,7 +285,7 @@ public class Server implements ServerInterf {
 				}
 				
 				
-				System.out.println("Packet received at MCsocket: " + new String(packet.getData()).trim());
+				System.out.println("Packet received at MCsocket: " + new String(packet.getData()).trim() + "\n");
 				Thread handler = new Thread(new ControlProtocol(this.server, packet.getData()));
 				handler.start();
 			}

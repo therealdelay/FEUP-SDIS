@@ -34,7 +34,7 @@ public class Chunk implements Runnable {
 		RestoreProtocol handler = (RestoreProtocol) requests.get("RESTORE"+this.fileId);
 		
 		if(handler != null){
-			System.out.println("ControlProtocol: Notifying Restore");
+			System.out.println("ControlProtocol: Notifying Restore\n");
 			/*
 			System.out.println("ChunkBody: ");
 			System.out.println(new String(this.chunkBody));

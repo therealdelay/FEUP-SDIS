@@ -22,7 +22,7 @@ Para correr a testApp:
 	java TestApp <peer_ap> <sub_protocol> <opnd_1> <opnd_2>
 
 Em que:
-	peer_ap: ponto de acesso ao initiator peer por rmi no formato ip/id, em que o id e id correspondem aos do peer, que terá o papel de initiator.
+	peer_ap: ponto de acesso ao initiator peer por rmi no formato ip/id, em que o ip e id correspondem aos do peer, que terá o papel de initiator.
 
 Exemplo:
 	java TestApp localhost/1 backup bar.gif 2

@@ -213,9 +213,9 @@ public class BackUpProtocol implements Runnable {
 		this.removeRequest();
 		
 		if(this.isChunkBackUp())
-			System.out.println("Chunk "+this.chunkNr+" of file "+this.fileName+" backed up with success");
+			System.out.println("Chunk "+this.chunkNr+" of file "+this.fileName+" backed up with success!");
 		else
-			System.out.println("File "+this.fileName+" backed up with success");
+			System.out.println("File "+this.fileName+" backed up with success!");
 	}
 	
 	private void exit_err(String err){
@@ -237,7 +237,7 @@ public class BackUpProtocol implements Runnable {
 	}
 	
 	public void stored(int id, int chunk){
-		System.out.println("Id: "+ id + " " + "Chunk: " + chunk);
+		System.out.println("Id: "+ id + " " + "Chunk: " + chunk + "\n");
 		this.server.getFileManager().incFileChunkRepDeg(this.fileId,chunk,id);
 		try{
 			this.lock.lock();

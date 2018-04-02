@@ -33,6 +33,7 @@ public class RestoreProtocol implements Runnable {
 		int totalChunks = fileManager.getFileTotalChunks(this.fileName);
 		System.out.println("Total Chunks: "+totalChunks);
 		this.outStream = fileManager.getOutStream(ServerFile.toRelativeName(this.fileName));
+
 		
 		for(int i = 0; i < totalChunks; i++){
 			if(!this.receiveChunk()){
@@ -51,7 +52,6 @@ public class RestoreProtocol implements Runnable {
 		long start = System.currentTimeMillis();
 		boolean done = false;
 		while(true){
-			
 			try{
 				this.lock.lock();
 				if(this.received){
@@ -113,7 +113,7 @@ public class RestoreProtocol implements Runnable {
 		catch(IOException e){
 			this.printErrMsg("Unable to close input stream");
 		}
-		System.out.println("File "+this.fileName+" restored up with success");
+		System.out.println("File "+this.fileName+" restored up with success!");
 		
 		this.removeRequest();
 	}
@@ -143,6 +143,7 @@ public class RestoreProtocol implements Runnable {
 				this.received = true;
 				this.currChunk++;
 				this.buf = buf;
+				this.server.restoreThreads.clear();
 			}
 		}
 		finally{

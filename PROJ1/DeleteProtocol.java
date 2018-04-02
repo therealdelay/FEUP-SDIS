@@ -28,7 +28,7 @@ public class DeleteProtocol implements Runnable {
 
 			int delay = this.getRandomFrequency();
 			try{
-				System.out.println("Waiting for " + delay + " seconds.");
+				System.out.println("Waiting for " + delay + " seconds to resend DELETE message.");
 				TimeUnit.SECONDS.sleep(delay);
 			}
 			catch(InterruptedException e){
@@ -50,6 +50,7 @@ public class DeleteProtocol implements Runnable {
 		catch(IOException e){
 			this.printErrMsg("Unable to send DELETE message");
 		}
+		System.out.println("DELETE message sent.");
 	}
 
 	private int getRandomFrequency(){

@@ -82,9 +82,9 @@ public class ControlProtocol implements Runnable {
 		
 		//Lookup file backup processes
 		BackUpProtocol handler = (BackUpProtocol) requests.get("BACKUP"+this.fileId);
-		
+
 		if(handler != null){
-			System.out.println("ControlProtocol: Notifying Backup");
+			System.out.println("ControlProtocol: Notifying Backup\n");
 			handler.stored(Integer.parseInt(this.senderId), Integer.parseInt(this.chunkNr));
 		}
 		
@@ -92,7 +92,7 @@ public class ControlProtocol implements Runnable {
 		handler = (BackUpProtocol) requests.get("BACKUP"+this.fileId+this.chunkNr);
 		
 		if(handler != null){
-			System.out.println("ControlProtocol: Notifying Chunk Backup");
+			System.out.println("ControlProtocol: Notifying Chunk Backup\n");
 			handler.stored(Integer.parseInt(this.senderId), Integer.parseInt(this.chunkNr));
 		}
 	}
@@ -112,7 +112,7 @@ public class ControlProtocol implements Runnable {
 		
 		String fileName = chunkId+".chunk";
 		FileInputStream inStream = fileManager.getInStream(fileName);
-		
+
 		//Read
 		byte[] buf = new byte[Server.MAX_CHUNK_SIZE];
 		int read;
@@ -124,21 +124,22 @@ public class ControlProtocol implements Runnable {
 			this.printErrMsg("Unable to read chunk "+this.chunkNr+" of file "+this.fileId);
 			return;
 		}
-		
+
 		byte[] cleanBuf = new byte[read];
 		System.arraycopy(buf,0,cleanBuf,0,read);
 		
 		int delay = this.getRandomTime();
-		System.out.println("Delay " + delay);
 		try{
 			TimeUnit.MILLISECONDS.sleep(delay);
 		}
 		catch(InterruptedException e){
 			System.out.println(e);
 		}
+
 		if(!this.server.restoreThreads.containsKey("CHUNK"+this.fileId+"_"+this.chunkNr)){
 			this.sendChunkMsg(cleanBuf);
 		}
+		this.server.restoreThreads.clear();
 	}
 
 	private int getRandomTime(){
@@ -150,12 +151,13 @@ public class ControlProtocol implements Runnable {
 	private void processDelete(){
 		System.out.println("Processing Delete...");
 		this.server.getFileManager().removeAllChunks(this.fileId);
+		System.out.println("File deleted!");
 	}
-	
+
 	private void processRemoved(){
 		//System.out.println("Processing Removed...");
 		if(this.server.getFileManager().decFileChunkRepDeg(this.fileId, Integer.parseInt(this.chunkNr), Integer.parseInt(this.senderId))){
-			System.out.println("Replication degree bellow required on chunk nr "+this.chunkNr+" of file "+this.fileId);
+			System.out.println("Replication degree below required on chunk nr "+this.chunkNr+" of file "+this.fileId);
 			//System.out.println("Starting chunk back up");
 			this.server.backupChunk(this.fileId,Integer.parseInt(this.chunkNr));
 		}
