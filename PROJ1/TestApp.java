@@ -20,28 +20,37 @@ public class TestApp {
 		}
 		
 		TestApp testApp = new TestApp(args);
-		testApp.connect();
 		testApp.processRequest();
 	}
 
 	public TestApp(String[] args){
 		
 		this.url = "rmi://"+args[0];
-		System.out.println(this.url);
-		this.command = args[1].toUpperCase();;
+		this.command = args[1].toUpperCase();
 		
 		int argsLength = args.length-2;
 		if(argsLength > 0){
 			this.args = new String[argsLength];
 			System.arraycopy(args, 2, this.args, 0, argsLength);
 		}
+		else
+			this.args = new String[0];
 	}
 	
 	private static void printUsage(){
-		System.out.println("Wrong number of arguments");
+		String lineSep = System.lineSeparator();
+		String doubleLineSep = lineSep+lineSep;
+		String usage =  lineSep+
+					    "    TestApp <peer_ap> <sub_protocol> [opnd_1] [opnd_2]"+doubleLineSep+
+						"      peer_ap: peer's access point in RMI format"+doubleLineSep+
+						"      sub_protocol: the operation the target peer service must execute, may be BACKUP, RESTORE, RECLAIM, STATE"+doubleLineSep+
+						"      opnd_1: if BACKUP/RESTORE, represents the relative or absolute file name"+lineSep+
+						"              if RECLAIM, represents the amount of used memory allowed to be in the target peer"+doubleLineSep+
+						"      opnd_2: if BACKUP, represents the desired replication degree in the system";
+		System.out.println(usage);
 	}
 	
-	public void connect(){
+	private void connect(){
 		try{
 			this.proxy = (ServerInterf) Naming.lookup(this.url);
 		}
@@ -52,18 +61,41 @@ public class TestApp {
 	}
 	
 	private void echo(){
+		
+		this.connect();
+		
 		String echoMsg;
 		String msg = String.join(" ",this.args);
+		System.out.println("Echoing message "+msg);
 		try{
 			echoMsg = this.proxy.echo(msg);
 			System.out.println("Msg from server: "+echoMsg);
 		}
 		catch(Exception e){
-			System.err.println("Failed to send: ECHO");
+			System.err.println("Failed echo");
 		}
 	}
 	
+	private boolean checkBackUpArgs(){
+		if(this.args.length != 2){
+			System.err.println("Wrong number or arguments for BACKUP");
+			return false;
+		}
+			
+		if(!this.args[1].matches("^[1-9][0-9]*")){
+			System.err.println("Replication degree is not a valid number, must be greater than 0");
+			return false;
+		}
+		
+		return true;
+	}
+	
 	private void backup(){
+		if(!this.checkBackUpArgs())
+			return;
+		
+		this.connect();
+		
 		System.out.println("Backing up file " + this.args[0] + " with replication degree of " + this.args[1] + ".");
 		try{
 			this.proxy.backup(this.args[0], Integer.parseInt(this.args[1]));
@@ -75,7 +107,21 @@ public class TestApp {
 		System.out.println("Backup processed.");
 	}
 	
+	private boolean checkRestoreArgs(){
+		if(this.args.length != 1){
+			System.err.println("Wrong number or arguments for RESTORE");
+			return false;
+		}
+		
+		return true;
+	}
+	
 	private void restore(){
+		if(!this.checkRestoreArgs())
+			return;
+		
+		this.connect();
+		
 		System.out.println("Restoring file " + this.args[0] + ".");
 		try{
 			this.proxy.restore(this.args[0]);
@@ -87,7 +133,20 @@ public class TestApp {
 		System.out.println("Restore processed.");
 	}
 	
+	private boolean checkDeleteArgs(){
+		if(this.args.length != 1){
+			System.err.println("Wrong number or arguments for DELETE");
+			return false;
+		}
+		
+		return true;
+	}
 	private void delete(){
+		if(!this.checkDeleteArgs())
+			return;
+		
+		this.connect();
+		
 		System.out.println("Deleting file " + this.args[0] + ".");
 		try{
 			this.proxy.delete(this.args[0]);
@@ -98,7 +157,26 @@ public class TestApp {
 		System.out.println("Delete processed.");
 	}
 	
+	private boolean checkReclaimArgs(){
+		if(this.args.length != 1){
+			System.err.println("Wrong number or arguments for RECLAIM");
+			return false;
+		}
+			
+		if(!this.args[0].matches("^\\d+")){
+			System.err.println("Max memory is not a valid number, must be positive");
+			return false;
+		}
+		
+		return true;
+	}
+	
 	private void reclaim(){
+		if(!this.checkReclaimArgs())
+			return;
+		
+		this.connect();
+		
 		int mem = 8*1024 - Integer.parseInt(this.args[0]);
 		System.out.println("Reclaiming " + mem + "KBytes of disk space.");
 		try{
@@ -111,7 +189,9 @@ public class TestApp {
 	}
 	
 	private void state(){
-		System.out.println("Processing state...");
+		this.connect();
+		
+		System.out.println("Retrieving peer state");
 		try{
 			String state = this.proxy.state();
 			System.out.println(state);

@@ -23,6 +23,7 @@ Para correr a testApp:
 
 Em que:
 	peer_ap: ponto de acesso ao initiator peer por rmi no formato ip/id, em que o ip e id correspondem aos do peer, que terá o papel de initiator.
+	opnd_1: no caso de ser um nome de ficheiro (BACKUP e RESTORE), poderá ser o seu path relativo ou absoluto.
 
 Exemplo:
 	java TestApp localhost/1 backup bar.gif 2
