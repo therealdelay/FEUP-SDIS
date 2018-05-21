@@ -1,0 +1,30 @@
+Comandos:
+
+Non-initiator peer:
+java Peer id Mcc_ip Mcc_port MDB_ip MDB_port
+
+
+Initiator
+java Peer id Mcc_ip Mcc_port MDB_ip MDB_port file_name rep_lay
+
+
+Server:
+1. java Server 1.0 1 228.5.6.7:6789 228.5.6.8:6790 228.5.6.9:6791
+2. java Server 1.0 2 228.5.6.7:6789 228.5.6.8:6790 228.5.6.9:6791
+3. java Server 1.0 3 228.5.6.7:6789 228.5.6.8:6790 228.5.6.9:6791
+
+Client:
+
+-Echo
+java TestApp localhost/1 echo
+
+-Backup
+java TestApp localhost/1 backup bar.gif 2
+java TestApp localhost/1 backup big.zip 2
+java TestApp localhost/3 backup big.zip 2
+
+-Restore
+java TestApp localhost/1 restore bar.gif
+
+-Delete
+java TestApp localhost/1 delete bar.gif
