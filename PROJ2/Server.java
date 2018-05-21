@@ -82,7 +82,7 @@ public class Server implements ServerInterf {
 			System.exit(1);
 		}
 		
-		this.fileManager = new FileManager();
+		this.fileManager = new FileManager(this.id);
 		this.requests = new ConcurrentHashMap<String,Runnable>();
 		this.restoreThreads = new ConcurrentHashMap<String,Runnable>();
 		

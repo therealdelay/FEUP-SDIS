@@ -16,6 +16,7 @@ public class StoreChunk implements Runnable {
 	private String senderId;
 	private String fileId;
 	private String chunkNr;
+	private String repDeg;
 	
 	public StoreChunk(Server server, byte[] buf, int length){
 		this.server = server;
@@ -51,6 +52,7 @@ public class StoreChunk implements Runnable {
 		this.senderId = header[2];
 		this.fileId = header[3];
 		this.chunkNr = header[4];
+		this.repDeg = header[5].trim();
 		
 		//Copy actual body
 		int headerLength = parts[0].length()+2;
@@ -78,7 +80,7 @@ public class StoreChunk implements Runnable {
 			this.printErrMsg("Unable to save chunk");
 		}
 		
-		fileManager.addChunk(chunkId,this.chunkBody.length,this.server.getId());
+		fileManager.addChunk(chunkId,this.chunkBody.length,Integer.parseInt(this.repDeg),this.server.getId());
 		System.out.println("Chunk nr "+this.chunkNr+" of file "+this.fileId+" saved");
 	}
 	

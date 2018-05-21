@@ -7,6 +7,7 @@ public class ServerChunk{
 	private int chunkNr;
 	private long size;
 	private boolean onDisk;
+	private int repDeg = -1;
 	private ArrayList<Integer> peers; //keeps track of the unique peers that have stored the chunk
 	
 	public ServerChunk(String id){
@@ -20,14 +21,15 @@ public class ServerChunk{
 		this.onDisk = false;
 	}
 	
-	public ServerChunk(String id, long size){
+	public ServerChunk(String id, long size, int repDeg){
 		this.id  = id;
-		
+
 		String[] parts = this.id.split("\\.")[0].split("_");
 		this.fileId = parts[0];
 		this.chunkNr = Integer.parseInt(parts[1]);
 		
 		this.size = size;
+		this.repDeg = repDeg;
 		this.peers = new ArrayList<Integer>();
 		this.onDisk = true;
 	}
@@ -38,7 +40,7 @@ public class ServerChunk{
 		return chunkId;
 	}
 	
-	public void incChunkRepDeg(int peerId){
+	public void incRepDeg(int peerId){
 		
 		System.out.println("Peer: "+peerId);
 		if(!this.peers.contains(peerId))
@@ -48,7 +50,14 @@ public class ServerChunk{
 		System.out.println(state);
 	}
 		
-	
+	public boolean decRepDeg(int peerId){
+		this.peers.remove(new Integer(peerId));
+		if(this.repDeg != -1)
+			return this.peers.size() < this.repDeg;
+		else
+			return false;
+	}
+		
 	public int getPerceivedRepDeg(){
 		return this.peers.size();
 	}
@@ -84,12 +93,25 @@ public class ServerChunk{
 	public void setOnDisk(boolean status){
 		this.onDisk = status;
 	}
+	
+	public void addToDisk(int peerId, int size){
+		this.onDisk = true;
+		this.size = size;
+		this.incRepDeg(peerId);
+	}
+	
+	public void removeFromDisk(int peerId){
+		this.onDisk = false;
+		this.decRepDeg(peerId);
+	}
 
 	public String toString(){
 		String newLine = System.lineSeparator();
+		String repDegStr = this.repDeg == -1 ? "-" : ""+this.repDeg;
 		
 		return "	ID: "+this.id+newLine+
 			   "	Size: "+this.size+newLine+
+			   "	RepDeg: "+repDegStr+newLine+
 			   "	Perceived RepDeg: "+this.getPerceivedRepDeg()+newLine+
 			   "	On disk: "+this.onDisk;
 	}

@@ -6,12 +6,14 @@ import java.util.*;
 import java.util.stream.*;
 
 public class FileManager{
+	private int serverId;
 	private ArrayList<ServerFile> files;
 	private ArrayList<ServerChunk> chunks;
 	private Path WDir;
 	private long usedMem = 0;
 	
-	public FileManager(){
+	public FileManager(int serverId){
+		this.serverId = serverId;
 		this.files = new ArrayList<ServerFile>();
 		this.chunks = new ArrayList<ServerChunk>();
 	}
@@ -31,20 +33,20 @@ public class FileManager{
 		return true;
 	}
 	
-	public synchronized void addChunk(String chunkId, int size, int peerId){
+	public synchronized void addChunk(String chunkId, int size, int repDeg, int peerId){
 		this.usedMem += size;
 		
 		for(ServerChunk chunk : this.chunks){
 			if(chunk.getId().compareTo(chunkId) == 0){
-				chunk.setOnDisk(true);
-				chunk.setSize(size);
-				chunk.incChunkRepDeg(peerId);
+				chunk.addToDisk(peerId,size);
 				System.out.println(this.toString());
 				return;
 			}
 		}
 		
-		this.chunks.add(new ServerChunk(chunkId,size));
+		ServerChunk chunk = new ServerChunk(chunkId,size,repDeg);
+		chunk.incRepDeg(peerId);
+		this.chunks.add(chunk);
 		System.out.println(this.toString());
 	}
 	
@@ -53,12 +55,14 @@ public class FileManager{
 		for(int i = 0; i < this.chunks.size(); i++){
 			chunk = this.chunks.get(i);
 			if(chunk.getId().compareTo(chunkId) == 0){
-				chunk.incChunkRepDeg(peerId);
+				chunk.incRepDeg(peerId);
 				return;
 			}
 		}
 		
-		this.chunks.add(new ServerChunk(chunkId));
+		chunk = new ServerChunk(chunkId);
+		chunk.incRepDeg(peerId);
+		this.chunks.add(chunk);
 	}
 	
 	public synchronized void incFileChunkRepDeg(String fileId, int chunkNr, int peerId){
@@ -73,6 +77,13 @@ public class FileManager{
 	}
 	
 	public synchronized boolean decFileChunkRepDeg(String fileId, int chunkNr, int peerId){
+		
+		String chunkId = ServerChunk.toId(fileId,chunkNr);
+		for(ServerChunk chunk : this.chunks){
+			if(chunk.getId().compareTo(chunkId) == 0)
+				chunk.decRepDeg(peerId);
+		}
+		
 		ServerFile file;
 		for(int i = 0; i < this.files.size(); i++){
 			file = this.files.get(i);
@@ -108,15 +119,17 @@ public class FileManager{
 
 	public ArrayList<ServerChunk> freeMem(int maxMem){
 		ArrayList<ServerChunk> chunksToRemove = new ArrayList<ServerChunk>();
+		int currChunk = 0;
 		synchronized(this.chunks){
 			ServerChunk chunk;
 			while(this.usedMem > maxMem){
-				chunk = this.chunks.get(0);
+				chunk = this.chunks.get(currChunk);
+				currChunk++;
 				if(!chunk.onDisk())
 					continue;
 				
 				System.out.println("UsedMem: "+this.usedMem+" maxMem: "+maxMem);
-				chunk.setOnDisk(false);
+				chunk.removeFromDisk(this.serverId);
 				chunksToRemove.add(chunk);
 				this.usedMem -= chunk.getSize();
 			}
@@ -152,8 +165,8 @@ public class FileManager{
 			ServerChunk chunk;
 			for(int i = 0; i < this.chunks.size(); i++){
 				chunk = this.chunks.get(i);
-				if(chunk.getId().matches("(.*)"+fileId+"(.*)") && chunk.onDisk()){
-					chunk.setOnDisk(false);
+				if(chunk.getId().matches("(.*)"+fileId+"(.*)")){
+					this.chunks.remove(i);
 					this.usedMem -= chunk.getSize();
 					chunksToRemove.add(chunk.getId());
 					i--;

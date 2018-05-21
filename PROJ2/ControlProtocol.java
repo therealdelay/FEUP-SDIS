@@ -78,6 +78,7 @@ public class ControlProtocol implements Runnable {
 	}
 	
 	private void processStored(){
+		
 		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
 		
 		//Lookup file backup processes
@@ -96,8 +97,6 @@ public class ControlProtocol implements Runnable {
 			handler.stored(Integer.parseInt(this.senderId), Integer.parseInt(this.chunkNr));
 		}
 		
-		System.out.println(this.senderId);
-		Integer.parseInt(this.senderId);
 		int chunkNr = Integer.parseInt(this.chunkNr);
 		int senderId = Integer.parseInt(this.senderId);
 		String chunkId = ServerChunk.toId(this.fileId,chunkNr);
