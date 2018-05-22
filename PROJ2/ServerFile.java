@@ -1,6 +1,8 @@
 import java.io.*;
 import java.nio.*;
+import java.nio.file.*;
 import java.nio.charset.*;
+import java.nio.file.attribute.*;
 import java.net.*;
 import java.lang.*;
 import java.security.*;
@@ -10,16 +12,31 @@ import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
 public class ServerFile{
-	private String pathName;
 	private String id;
-	private ArrayList<ArrayList<Integer>> chunksRepDeg;
+	private String pathName;
+	private FileTime creationDate;
 	private int replicationDeg;
+	private ArrayList<ArrayList<Integer>> chunksRepDeg;
 	
 	public ServerFile(String fileName, int replicationDeg){
 		this.pathName = ServerFile.toPathName(fileName);
 		this.id = ServerFile.toId(fileName);
+		this.readCreationDate();
 		this.replicationDeg = replicationDeg;
 		this.chunksRepDeg = new ArrayList<ArrayList<Integer>>();
+	}
+	
+	public void readCreationDate(){
+		Path file = Paths.get(this.pathName);
+		try{
+			BasicFileAttributes attr = Files.getFileAttributeView(file,BasicFileAttributeView.class).readAttributes();
+			this.creationDate = attr.creationTime();
+			System.out.println("Creation Time: "+this.creationDate);
+		}
+		catch(Exception e){
+			this.creationDate = null;
+			e.printStackTrace();
+		}
 	}
 	
 	public String getPathName(){
