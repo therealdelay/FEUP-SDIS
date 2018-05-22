@@ -26,6 +26,14 @@ public class ServerFile{
 		this.chunksRepDeg = new ArrayList<ArrayList<Integer>>();
 	}
 	
+	public ServerFile(String fileId, String pathName, long creationDate, int replicationDeg){
+		this.id = fileId;
+		this.pathName = pathName;
+		this.readCreationDate();
+		this.replicationDeg = replicationDeg;
+		this.chunksRepDeg = new ArrayList<ArrayList<Integer>>();
+	}
+	
 	public void readCreationDate(){
 		Path file = Paths.get(this.pathName);
 		try{
@@ -99,11 +107,15 @@ public class ServerFile{
 		return peers.size() < this.replicationDeg;
 	}
 	
+	public String toMsg(){
+		return this.id+" "+this.pathName+" "+this.creationDate.toMillis();
+	}
+	
 	public String toString(){
 		String lineSep = System.lineSeparator();
 		return  "	PathName: "+this.pathName+lineSep+
 				"	ID: "+this.id+lineSep+
-				"	Expected replication degree "+this.replicationDeg+lineSep+
+				"	Expected replication degree: "+this.replicationDeg+lineSep+
 				"	Current chunks replication degree: "+ this.chunksRepDeg.stream().map(peers -> Integer.toString(peers.size())).collect(Collectors.joining(", "));
 	}
 }

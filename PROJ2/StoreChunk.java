@@ -14,6 +14,7 @@ public class StoreChunk implements Runnable {
 	private Server server;
 	private String version;
 	private String senderId;
+	private ServerFile file;
 	private String fileId;
 	private String chunkNr;
 	private String repDeg;
@@ -33,6 +34,11 @@ public class StoreChunk implements Runnable {
 	
 		String chunkId = ServerChunk.toId(this.fileId,Integer.parseInt(this.chunkNr));
 		
+		if(!this.server.getFileManager().addFile(this.file))
+			System.out.println("File already added");
+		else
+			System.out.println("New File added");
+		
 		if(!fileManager.containsChunk(chunkId))
 			this.saveChunk(chunkId);
 		else
@@ -48,11 +54,22 @@ public class StoreChunk implements Runnable {
 		
 		//Parse header elements
 		String[] header = parts[0].split(" ");
+		System.out.println(Arrays.toString(header));
 		this.version = header[1];
 		this.senderId = header[2];
 		this.fileId = header[3];
-		this.chunkNr = header[4];
-		this.repDeg = header[5].trim();
+		
+		int i = 4;
+		String pathName = header[i++];
+		for(;i<header.length-3;i++)
+			pathName += " "+header[i];
+				
+		String creationDate = header[i++];
+		System.out.println(creationDate);
+		this.chunkNr = header[i++];
+		this.repDeg = header[i].trim();
+		
+		this.file = new ServerFile(this.fileId,pathName,Long.parseLong(creationDate),Integer.parseInt(this.repDeg));
 		
 		//Copy actual body
 		int headerLength = parts[0].length()+2;

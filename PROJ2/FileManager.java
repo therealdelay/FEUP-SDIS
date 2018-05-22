@@ -95,6 +95,18 @@ public class FileManager{
 		return false;
 	}
 	
+	public synchronized ServerFile getFile(String fileId){
+		ServerFile file;
+		for(int i = 0; i < this.files.size(); i++){
+			file = this.files.get(i);
+			if(file.getId().compareTo(fileId) == 0){
+				return file;
+			}
+		}
+		return null;
+	}
+	
+	
 	public synchronized String getFilePath(String fileId){
 		ServerFile file;
 		for(int i = 0; i < this.files.size(); i++){
