@@ -90,7 +90,7 @@ public class Server implements ServerInterf {
 		this.createSWD(args);
 		this.fileManager.setWDir(this.SWD);
 		
-		this.pool = new ThreadPoolExecutor(5,10,10,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(10));
+		this.pool = new ThreadPoolExecutor(5,30,10,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(10));
 		
 		//Start multicast channels listener threads
 		this.startListenerThreads();
@@ -281,8 +281,7 @@ public class Server implements ServerInterf {
 				
 				
 				System.out.println("Packet received at MCsocket: " + new String(packet.getData()).trim() + "\n");
-				Thread handler = new Thread(new ControlProtocol(this.server, packet.getData()));
-				handler.start();
+				pool.execute(new ControlProtocol(this.server, packet.getData()));
 			}
 		}
 
@@ -309,8 +308,7 @@ public class Server implements ServerInterf {
 					System.err.println("Error receiving MDBsocket packet");
 				}
 				
-				Thread handler = new Thread(new StoreChunk(this.server, packet.getData(), packet.getLength()));
-				handler.start();
+				pool.execute(new StoreChunk(this.server, packet.getData(), packet.getLength()));
 			}
 		}
 		
@@ -337,8 +335,7 @@ public class Server implements ServerInterf {
 					System.err.println("Error receiving MDRsocket packet");
 				}
 				
-				Thread handler = new Thread(new Chunk(this.server, packet.getData(), packet.getLength()));
-				handler.start();
+				pool.execute(new Chunk(this.server, packet.getData(), packet.getLength()));
 			}
 		}
 	}

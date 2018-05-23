@@ -35,13 +35,12 @@ public class ServerChunk{
 	}
 	
 	public static String toId(String fileId, int chunkNr){
-		String[] parts = fileId.split("\\.");
+ 		String[] parts = fileId.split("\\.");
 		String chunkId = parts[0]+"_"+chunkNr;
 		return chunkId;
 	}
 	
 	public void incRepDeg(int peerId){
-		
 		System.out.println("Peer: "+peerId);
 		if(!this.peers.contains(peerId))
 			peers.add(peerId);
