@@ -6,6 +6,10 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
+import java.security.InvalidKeyException;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+
 public class StoreChunk implements Runnable {
 	
 	private byte[] buf;
@@ -127,6 +131,9 @@ public class StoreChunk implements Runnable {
 		}
 		catch(IOException e){
 			this.printErrMsg("Unable to send STORED message");
+		}
+		catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+			System.err.println("MCsocket packet received is insecure");
 		}
 	}
 	
