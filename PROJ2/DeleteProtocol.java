@@ -7,6 +7,10 @@ import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 import java.util.concurrent.TimeUnit;
 
+import java.security.InvalidKeyException;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+
 public class DeleteProtocol implements Runnable {
 	
 	private Server server;
@@ -50,6 +54,10 @@ public class DeleteProtocol implements Runnable {
 		catch(IOException e){
 			this.printErrMsg("Unable to send DELETE message");
 		}
+		catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+			System.err.println("MCsocket packet received is insecure");
+		}
+		
 		System.out.println("DELETE message sent.");
 	}
 

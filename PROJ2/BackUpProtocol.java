@@ -6,6 +6,10 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
+import java.security.InvalidKeyException;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+
 public class BackUpProtocol implements Runnable {
 	
 	private final static int[] TIMEOUT_VALS = {1,2,4,8,16};
@@ -142,7 +146,7 @@ public class BackUpProtocol implements Runnable {
 		byte[] msg = new byte[header.length+body.length];
 		System.arraycopy(header,0,msg,0,header.length);
 		System.arraycopy(body,0,msg,header.length,body.length);
-		return msg;
+		return msg;		
 	}	
 	
 	private boolean backUpChunk(byte buf[]){
@@ -166,6 +170,9 @@ public class BackUpProtocol implements Runnable {
 			}
 			catch(IOException e){
 				this.printErrMsg("Unable to send PUTCHUNK message");
+			}
+			catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+				System.err.println("Error sending packet through MDBSocket: " + e);
 			}
 			
 			try{
