@@ -16,6 +16,7 @@ public class BackUpProtocol implements Runnable {
 	private final static int MAX_TRIES = 5;
 	
 	private Server server;
+	private ServerFile serverFile;
 	private String fileName;
 	private String fileId;
 	private int chunkNr;
@@ -100,11 +101,11 @@ public class BackUpProtocol implements Runnable {
 			return false;
 		}
 		
-		ServerFile serverFile = new ServerFile(this.fileName, this.replicationDeg);
+		this.serverFile = new ServerFile(this.fileName, this.replicationDeg);
 		
 		//Get file id
 		
-		this.fileId = serverFile.getId(); 	
+		this.fileId = serverFile.getId();
 		
 		FileManager fileManager = this.server.getFileManager();
 		
@@ -118,6 +119,7 @@ public class BackUpProtocol implements Runnable {
 	
 	private void readFile(){
 		FileManager fileManager = this.server.getFileManager();
+		this.serverFile = fileManager.getFile(this.fileId);
 		this.fileName = fileManager.getFilePath(this.fileId);
 		this.replicationDeg = fileManager.getFileRepDeg(this.fileId);
 	}
@@ -138,7 +140,7 @@ public class BackUpProtocol implements Runnable {
 	}
 	
 	private String getPutChunkHeader(){
-		return "PUTCHUNK "+this.server.getVersion()+" "+this.server.getId()+" "+this.fileId+" "+this.currChunk+" "+this.replicationDeg;
+		return "PUTCHUNK "+this.server.getVersion()+" "+this.server.getId()+" "+this.serverFile.toMsg()+" "+this.currChunk+" "+this.replicationDeg;
 	}
 	
 	private byte[] getPutChunkMsg(byte[] body){
