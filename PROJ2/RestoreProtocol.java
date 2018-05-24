@@ -9,6 +9,11 @@ import java.util.concurrent.locks.*;
 import java.security.InvalidKeyException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
+import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 public class RestoreProtocol implements Runnable {
 	
@@ -21,14 +26,20 @@ public class RestoreProtocol implements Runnable {
 	private boolean received = false;
 	private byte[] buf;
 	private ReentrantLock lock;
+
+	private SecretKeySpec secretKey;
+	private Cipher cipher;
 	
 	private FileOutputStream outStream;
 	
-	public RestoreProtocol(Server server, String fileName, String fileId){
+	public RestoreProtocol(Server server, String fileName, String fileId, byte[] clientKey) throws IOException, UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchPaddingException{
 		this.server = server;
 		this.fileName = fileName;
 		this.fileId = fileId;
 		this.lock = new ReentrantLock();
+
+		this.secretKey = new SecretKeySpec(clientKey, "AES");
+		this.cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 	}
 	
 	@Override
@@ -149,12 +160,25 @@ public class RestoreProtocol implements Runnable {
 			if(chunk == this.currChunk && this.received == false){
 				this.received = true;
 				this.currChunk++;
-				this.buf = buf;
+				
+				this.buf = decryptBody(buf);
+
 				this.server.restoreThreads.clear();
 			}
+		}
+		catch(IOException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException e){
+			this.exit_err("Error decrypting chunk "+this.currChunk + " : " + e);
+			return;
 		}
 		finally{
 			this.lock.unlock();
 		}
+	}
+
+	public byte[] decryptBody(byte[] body) throws IOException,InvalidKeyException,BadPaddingException,IllegalBlockSizeException
+	{	
+		System.out.println("DECRYPT: " + body.length);
+		this.cipher.init(Cipher.DECRYPT_MODE, this.secretKey);
+		return this.cipher.doFinal(body);
 	}
 }

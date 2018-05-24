@@ -10,6 +10,11 @@ import java.util.concurrent.TimeUnit;
 import java.security.InvalidKeyException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
+import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 public class DeleteProtocol implements Runnable {
 	
@@ -17,7 +22,7 @@ public class DeleteProtocol implements Runnable {
 	private String fileName;
 	private String fileId;
 	
-	public DeleteProtocol(Server server, String fileName){
+	public DeleteProtocol(Server server, String fileName, byte[] clientKey){
 		this.server = server;
 		this.fileName = fileName;
 		this.fileId = ServerFile.toId(fileName);

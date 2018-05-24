@@ -9,14 +9,22 @@ import java.util.concurrent.locks.*;
 import java.security.InvalidKeyException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
+import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 public class ReclaimProtocol implements Runnable {
 	
 	private Server server;
 	private int size;
 	private ArrayList<ServerChunk> deletedChunks;
+
+	private SecretKeySpec secretKey;
+	private Cipher cipher;
 	
-	public ReclaimProtocol(Server server, int size){
+	public ReclaimProtocol(Server server, int size, byte[] clientKey){
 		this.server = server;
 		this.size = size;
 	}

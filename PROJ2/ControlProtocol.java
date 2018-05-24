@@ -125,7 +125,7 @@ public class ControlProtocol implements Runnable {
 		FileInputStream inStream = fileManager.getInStream(fileName);
 
 		//Read
-		byte[] buf = new byte[Server.MAX_CHUNK_SIZE];
+		byte[] buf = new byte[Server.MAX_CHUNK_SIZE_ENCRYPTED];
 		int read;
 		try{
 			read = inStream.read(buf);
@@ -138,6 +138,8 @@ public class ControlProtocol implements Runnable {
 
 		byte[] cleanBuf = new byte[read];
 		System.arraycopy(buf,0,cleanBuf,0,read);
+
+		System.out.println("ProcessGetChunk: " + cleanBuf.length  + " : Read: " + read);
 		
 		int delay = this.getRandomTime();
 		try{
