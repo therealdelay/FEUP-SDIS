@@ -21,7 +21,10 @@ public class ControlProtocol implements Runnable {
 	private String senderId;
 	private String fileId;
 	private String chunkNr;
+	private String repDeg;
 	private boolean sendChunk;
+	
+	private boolean receivedPutChunk = false;
 	
 	public ControlProtocol(Server server, byte[] buf){
 		this.server = server;
@@ -47,9 +50,12 @@ public class ControlProtocol implements Runnable {
 		this.version = header[1];
 		this.senderId = header[2];
 		this.fileId = header[3];
-		if(header.length > 4)
+		if(header.length > 4){
 			this.chunkNr = header[4];
-			
+			if(header.length > 5)
+				this.repDeg = header[5];
+		}
+		
 		if(this.senderId.compareTo(""+this.server.getId()) == 0){
 			return true;
 		}
@@ -103,8 +109,9 @@ public class ControlProtocol implements Runnable {
 		
 		int chunkNr = Integer.parseInt(this.chunkNr);
 		int senderId = Integer.parseInt(this.senderId);
+		int repDeg = Integer.parseInt(this.repDeg);
 		String chunkId = ServerChunk.toId(this.fileId,chunkNr);
-		this.server.getFileManager().incChunkRepDeg(chunkId,senderId);
+		this.server.getFileManager().incChunkRepDeg(chunkId,repDeg,senderId);
 		
 	}
 	
@@ -139,14 +146,7 @@ public class ControlProtocol implements Runnable {
 		byte[] cleanBuf = new byte[read];
 		System.arraycopy(buf,0,cleanBuf,0,read);
 		
-		int delay = this.getRandomTime();
-		System.out.println("\nSleeping with delay " + delay + "\n");
-		try{
-			TimeUnit.MILLISECONDS.sleep(delay);
-		}
-		catch(InterruptedException e){
-			System.out.println(e);
-		}
+		this.sleepRandom();
 
 		System.out.println("RestoreThreads " + this.server.restoreThreads);
 
@@ -170,11 +170,19 @@ public class ControlProtocol implements Runnable {
 	}
 
 	private void processRemoved(){
+		
 		//System.out.println("Processing Removed...");
 		if(this.server.getFileManager().decFileChunkRepDeg(this.fileId, Integer.parseInt(this.chunkNr), Integer.parseInt(this.senderId))){
+			String handlerId = "REMOVED"+this.fileId+"_"+this.chunkNr;
+			System.out.println("Starting removed treatment");
+			this.server.removedThreads.put(handlerId, this);
+			this.sleepRandom();
 			System.out.println("Replication degree below required on chunk nr "+this.chunkNr+" of file "+this.fileId);
 			//System.out.println("Starting chunk back up");
-			this.server.backupChunk(this.fileId,Integer.parseInt(this.chunkNr));
+			if(!this.receivedPutChunk)
+				this.server.backupChunk(this.fileId,Integer.parseInt(this.chunkNr));
+			
+			this.server.removedThreads.remove(handlerId);
 		}
 	}
 
@@ -212,5 +220,21 @@ public class ControlProtocol implements Runnable {
 	
 	private void printErrMsg(String err){
 		System.err.println("Error in Control Protocol: "+err);
+	}
+	
+	private void sleepRandom(){
+		int delay = this.getRandomTime();
+		System.out.println("ControlProtocol: delay "+delay);
+		try{
+			TimeUnit.MILLISECONDS.sleep(delay);
+		}
+		catch(InterruptedException e){
+			System.out.println(e);
+		}
+	}
+	
+	public void notifyPutChunk(String fileId, String chunkNr){
+		if(this.fileId.compareTo(fileId)==0 && this.chunkNr.compareTo(chunkNr) == 0);
+			this.receivedPutChunk = true;
 	}
 }

@@ -16,21 +16,24 @@ public class ServerFile{
 	private String pathName;
 	private FileTime creationDate;
 	private int replicationDeg;
+	private int initPeerId;
 	private ArrayList<ArrayList<Integer>> chunksRepDeg;
 	
-	public ServerFile(String fileName, int replicationDeg){
+	public ServerFile(String fileName, int replicationDeg, int peerId){
 		this.pathName = ServerFile.toPathName(fileName);
 		this.id = ServerFile.toId(fileName);
 		this.readCreationDate();
 		this.replicationDeg = replicationDeg;
+		this.initPeerId = peerId;
 		this.chunksRepDeg = new ArrayList<ArrayList<Integer>>();
 	}
 	
-	public ServerFile(String fileId, String pathName, long creationDate, int replicationDeg){
+	public ServerFile(String fileId, String pathName, long creationDate, int replicationDeg, int peerId){
 		this.id = fileId;
 		this.pathName = pathName;
 		this.readCreationDate();
 		this.replicationDeg = replicationDeg;
+		this.initPeerId = peerId;
 		this.chunksRepDeg = new ArrayList<ArrayList<Integer>>();
 	}
 	
@@ -87,6 +90,10 @@ public class ServerFile{
 	public int getReplicationDeg(){
 		return this.replicationDeg;
 	}
+	
+	public int getInitPeerId(){
+		return this.initPeerId;
+	}
 
 	public ArrayList<ArrayList<Integer>> getChunksRepDeg(){
 		return this.chunksRepDeg;
@@ -102,13 +109,17 @@ public class ServerFile{
 	}
 
 	public boolean decChunksRepDeg(int chunkNr, int peerId){
+		if(this.chunksRepDeg.size() == 0)
+			return false;
+		
 		ArrayList<Integer> peers = this.chunksRepDeg.get(chunkNr);
 		peers.remove(new Integer(peerId));
 		return peers.size() < this.replicationDeg;
 	}
 	
 	public String toMsg(){
-		return this.id+" "+this.pathName+" "+this.creationDate.toMillis();
+		System.out.println("InitPeer: "+this.initPeerId);
+		return this.id+" "+this.pathName+" "+this.creationDate.toMillis()+" "+this.initPeerId;
 	}
 	
 	public String toString(){
