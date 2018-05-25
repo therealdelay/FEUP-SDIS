@@ -241,6 +241,16 @@ public class FileManager{
 		else
 			return !onDisk;
 	}
+		
+	public synchronized int getPerceivedRepDeg(String chunkId){
+		ServerChunk chunk;
+		for(int i = 0; i < this.chunks.size(); i++){
+			chunk = this.chunks.get(i);
+			if(chunk.getId().compareTo(chunkId) == 0)
+				return chunk.getPerceivedRepDeg();
+		}
+		return -1;
+	}
 	
 	public int getFileTotalChunks(String fileName){
 		File file = new File(fileName);

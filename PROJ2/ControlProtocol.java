@@ -6,6 +6,10 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
+import java.security.InvalidKeyException;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+
 public class ControlProtocol implements Runnable {
 	
 	private byte[] buf;
@@ -191,6 +195,9 @@ public class ControlProtocol implements Runnable {
 		}
 		catch(IOException e){
 			this.printErrMsg("Unable to send CHUNK message");
+		}
+		catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+			System.err.println("MCsocket packet received is insecure");
 		}
 
 		this.server.restoreThreads.put("CHUNK"+this.fileId+"_"+this.chunkNr, this);

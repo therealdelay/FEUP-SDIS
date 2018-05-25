@@ -6,6 +6,10 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
+import java.security.InvalidKeyException;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+
 public class StoreChunk implements Runnable {
 	
 	private byte[] buf;
@@ -29,15 +33,32 @@ public class StoreChunk implements Runnable {
 	public void run (){	
 		if(this.parseRequest())
 			return;
-		
+				
 		FileManager fileManager = this.server.getFileManager();
-	
+		
 		String chunkId = ServerChunk.toId(this.fileId,Integer.parseInt(this.chunkNr));
 		
 		if(!this.server.getFileManager().addFile(this.file))
 			System.out.println("File already added");
 		else
-			System.out.println("New File added");
+			System.out.println("New File added");	
+
+
+		long randomTimeout = (long) (Math.random() * 400);
+		System.out.println("\n\nRandom timeout is random " + randomTimeout + "\n\n");
+		
+		try {
+			Thread.sleep(randomTimeout);
+		} catch (InterruptedException e) {
+			System.out.println(e.toString());
+		}
+
+		if (fileManager.getPerceivedRepDeg(chunkId) >= Integer.parseInt(repDeg)) {
+			System.out.println("\nFile was already backed up with enough replication degree in other peers.\n");
+			return;
+		}
+		
+		this.sendStoredMsg();
 		
 		if(fileManager.canSaveChunk(chunkId)){
 			this.saveChunk(chunkId);
@@ -47,9 +68,9 @@ public class StoreChunk implements Runnable {
 			this.printErrMsg("Chunk already saved/owner of file");
 		
 		this.notifyRemovedThread();
+
 	}
-	
-	
+
 	private boolean parseRequest(){
 		String msg = new String(this.buf);
 		String[] parts = msg.split("\r\n");
@@ -109,23 +130,15 @@ public class StoreChunk implements Runnable {
 		TwinMulticastSocket socket = this.server.getMCsocket();
 		DatagramPacket packet = new DatagramPacket(msg.getBytes(), msg.length(), socket.getGroup(), socket.getPort());
 		
-		//Sleep between 0 and MAX_WAIT
-		Random rand = new Random();
-		int waitTime = rand.nextInt(Server.MAX_WAIT+1);
-		
-		try{
-			Thread.sleep(waitTime);
-		}
-		catch(InterruptedException e){
-			this.printErrMsg("Sleep interrupted");
-		}
-		
 		//Send response
 		try{
 			socket.send(packet);
 		}
 		catch(IOException e){
 			this.printErrMsg("Unable to send STORED message");
+		}
+		catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+			System.err.println("MCsocket packet received is insecure");
 		}
 	}
 	

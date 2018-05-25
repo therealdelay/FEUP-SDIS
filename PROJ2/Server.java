@@ -11,6 +11,15 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
+import java.security.InvalidKeyException;
+import java.security.MessageDigest;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.NoSuchPaddingException;
+
 public class Server implements ServerInterf {
 
 	private int id;
@@ -37,11 +46,23 @@ public class Server implements ServerInterf {
 	public final static int MAX_CHUNK_SIZE = 64000;
 	private final static int MAX_BUFFER_SIZE = 70000;
 	public final static int MAX_MEM = 8388608;
+
+	private final static String keyString = "d1nnyomelhorfeiticeirodehogw4rts";
+	private static byte[] key;
 	
 	public static void main(String[] args){
 		if(args.length != 5){
 			Server.printUsage();
 			return;
+		}
+
+		try {
+			MessageDigest sha = MessageDigest.getInstance("SHA-1");
+			key = sha.digest(keyString.getBytes("UTF-8"));
+			key = Arrays.copyOf(key, 16);
+
+		} catch(NoSuchAlgorithmException | UnsupportedEncodingException e){
+			System.err.println("Error creating server key");
 		}
 			
 		Server server = new Server(args);
@@ -69,15 +90,15 @@ public class Server implements ServerInterf {
 		
 		try{
 			//Connect MCsocket
-			this.MCsocket = new TwinMulticastSocket(args[2]);
+			this.MCsocket = new TwinMulticastSocket(args[2], key);
 	
 			//Connect MDBsocket
-			this.MDBsocket = new TwinMulticastSocket(args[3]);
+			this.MDBsocket = new TwinMulticastSocket(args[3], key);
 		
 			//Connect MDRsocket
-			this.MDRsocket = new TwinMulticastSocket(args[4]);
+			this.MDRsocket = new TwinMulticastSocket(args[4], key);
 		}
-		catch(IOException e){
+		catch(IOException | NoSuchAlgorithmException | NoSuchPaddingException e){
 			System.err.println("Error setting up multicast sockets");
 			this.disconnect();
 			System.exit(1);
@@ -92,13 +113,14 @@ public class Server implements ServerInterf {
 		this.createSWD(args);
 		this.fileManager.setWDir(this.SWD);
 		
-		this.pool = new ThreadPoolExecutor(5,10,10,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(10));
+		this.pool = new ThreadPoolExecutor(5,30,10,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(10));
 		
 		//Start multicast channels listener threads
 		this.startListenerThreads();
 		
 		System.out.println("Server set up and running");
 	}
+	
 	
 	private void connectRMI(){
 		int port = Registry.REGISTRY_PORT;
@@ -280,11 +302,13 @@ public class Server implements ServerInterf {
 				catch(IOException e){	
 					System.err.println("Error receiving MCsocket packet");
 				}
+				catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+					System.err.println("MCsocket packet received is insecure: " + e);
+				}
 				
 				
 				System.out.println("Packet received at MCsocket: " + new String(packet.getData()).trim() + "\n");
-				Thread handler = new Thread(new ControlProtocol(this.server, packet.getData()));
-				handler.start();
+				pool.execute(new ControlProtocol(this.server, packet.getData()));
 			}
 		}
 
@@ -310,9 +334,11 @@ public class Server implements ServerInterf {
 				catch(IOException e){
 					System.err.println("Error receiving MDBsocket packet");
 				}
+				catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+					System.err.println("MDBsocket packet received is insecure: " + e);
+				}
 				
-				Thread handler = new Thread(new StoreChunk(this.server, packet.getData(), packet.getLength()));
-				handler.start();
+				pool.execute(new StoreChunk(this.server, packet.getData(), packet.getLength()));
 			}
 		}
 		
@@ -338,9 +364,11 @@ public class Server implements ServerInterf {
 				catch(IOException e){
 					System.err.println("Error receiving MDRsocket packet");
 				}
+				catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+					System.err.println("MDRsocket packet received is insecure: " + e);
+				}
 				
-				Thread handler = new Thread(new Chunk(this.server, packet.getData(), packet.getLength()));
-				handler.start();
+				pool.execute(new Chunk(this.server, packet.getData(), packet.getLength()));
 			}
 		}
 	}
