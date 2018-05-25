@@ -155,7 +155,7 @@ public class ServerFile{
 
 		File file = new File(this.pathName);
 
-		return this.encryptedId + " " + this.id+" "+this.pathName+" "+file.lastModified();
+		return this.encryptedId + " " + this.id+" "+this.pathName+" "+this.lastModified;
 	}
 	
 	public String toString(){

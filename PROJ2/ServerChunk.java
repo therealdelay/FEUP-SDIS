@@ -4,6 +4,7 @@ import java.util.Arrays;
 public class ServerChunk{
 	private String id;
 	private String fileId;
+	private String fileEncryptedId;
 	private int chunkNr;
 	private long size;
 	private boolean onDisk;
@@ -21,11 +22,12 @@ public class ServerChunk{
 		this.onDisk = false;
 	}
 	
-	public ServerChunk(String id, long size, int repDeg){
+	public ServerChunk(String id, String fileEncryptedId, long size, int repDeg){
 		this.id  = id;
 
 		String[] parts = this.id.split("\\.")[0].split("_");
 		this.fileId = parts[0];
+		this.fileEncryptedId = fileEncryptedId;
 		this.chunkNr = Integer.parseInt(parts[1]);
 		
 		this.size = size;
@@ -68,6 +70,10 @@ public class ServerChunk{
 	
 	public String getFileId(){
 		return this.fileId;
+	}
+
+	public String getFileEncryptedId() {
+		return this.fileEncryptedId;
 	}
 	
 	public String getFileName(){

@@ -16,6 +16,7 @@ import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
 
 public class DeleteProtocol implements Runnable {
 	
@@ -36,7 +37,10 @@ public class DeleteProtocol implements Runnable {
 	
 	@Override
 	public void run (){
-		this.server.getFileManager().removeAllChunks(this.fileId);
+
+		String encodedKey = Base64.getEncoder().encodeToString(this.secretKey.getEncoded());
+
+		this.server.getFileManager().removeAllChunks(this.fileId, encodedKey);
 		int n = 3;
 		while(n > 0){
 			this.sendDeleteMsg();
@@ -79,8 +83,11 @@ public class DeleteProtocol implements Runnable {
 	}
 	
 	private String getDeleteMsg(){
+
+		String secretKeyBase = Base64.getEncoder().encodeToString(this.secretKey.getEncoded());
+
 		return "DELETE "+this.server.getVersion()+" "+this.server.getId()+" "
-			+this.fileEncryptedId + " " + this.fileId;
+			+secretKeyBase + " " + this.fileId;
 	}
 	
 	private void printErrMsg(String err){

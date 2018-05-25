@@ -104,7 +104,7 @@ public class StoreChunk implements Runnable {
 			this.printErrMsg("Unable to save chunk");
 		}
 		
-		fileManager.addChunk(chunkId,this.chunkBody.length,Integer.parseInt(this.repDeg),this.server.getId());
+		fileManager.addChunk(chunkId,this.encryptedFileId,this.chunkBody.length,Integer.parseInt(this.repDeg),this.server.getId());
 		System.out.println("Chunk nr "+this.chunkNr+" of file "+this.fileId+" saved");
 	}
 	

@@ -166,7 +166,7 @@ public class ControlProtocol implements Runnable {
 	
 	private void processDelete(){
 		System.out.println("Processing Delete...");
-		this.server.getFileManager().removeAllChunks(this.fileId);
+		this.server.getFileManager().removeAllChunks(this.fileId, this.fileEncryptedId); //fileEncrypted is the secretKey
 		System.out.println("File deleted!");
 	}
 
