@@ -43,7 +43,7 @@ public class StoreChunk implements Runnable {
 		else
 			System.out.println("New File added");	
 
-
+		/*
 		long randomTimeout = (long) (Math.random() * 400);
 		System.out.println("\n\nRandom timeout is random " + randomTimeout + "\n\n");
 		
@@ -53,21 +53,26 @@ public class StoreChunk implements Runnable {
 			System.out.println(e.toString());
 		}
 
-		if (fileManager.getPerceivedRepDeg(chunkId) >= Integer.parseInt(repDeg)) {
+		if (fileManager.getPerceivedRepDeg(chunkId) >= Integer.parseInt(this.repDeg)) {
 			System.out.println("\nFile was already backed up with enough replication degree in other peers.\n");
-			return;
+			//return;
 		}
-		
-		if(fileManager.canSaveChunk(chunkId)){
-			System.out.println("StoreChunk: Saving chunk");
-			this.saveChunk(chunkId);
+		*/	
+			
+		if(!fileManager.ownsChunk(chunkId)){
+			
 			this.sendStoredMsg();
-		}
+			
+			if(!fileManager.containsChunk(chunkId))
+				this.saveChunk(chunkId);
+			else
+				this.printErrMsg("Chunk already saved");
+		}		
 		else
-			this.printErrMsg("Chunk already saved/owner of file");
+			this.printErrMsg("Owner of file");
+		
 		
 		this.notifyRemovedThread();
-
 	}
 
 	private boolean parseRequest(){
@@ -86,9 +91,9 @@ public class StoreChunk implements Runnable {
 			pathName += " "+header[i];
 		
 		String creationDate = header[i++];
-		//System.out.println("Creation date: "+creationDate);
+		System.out.println("Creation date: "+creationDate);
 		String peerId = header[i++];
-		//System.out.println("Peer ID: "+peerId);
+		System.out.println("Peer ID: "+peerId);
 		this.chunkNr = header[i++];
 		this.repDeg = header[i].trim();
 		

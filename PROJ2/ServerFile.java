@@ -42,7 +42,7 @@ public class ServerFile{
 		try{
 			BasicFileAttributes attr = Files.getFileAttributeView(file,BasicFileAttributeView.class).readAttributes();
 			this.creationDate = attr.creationTime();
-			System.out.println("Creation Time: "+this.creationDate);
+			//System.out.println("Creation Time: "+this.creationDate);
 		}
 		catch(Exception e){
 			this.creationDate = null;
@@ -118,7 +118,6 @@ public class ServerFile{
 	}
 	
 	public String toMsg(){
-		System.out.println("InitPeer: "+this.initPeerId);
 		return this.id+" "+this.pathName+" "+this.creationDate.toMillis()+" "+this.initPeerId;
 	}
 	
@@ -126,6 +125,7 @@ public class ServerFile{
 		String lineSep = System.lineSeparator();
 		return  "	PathName: "+this.pathName+lineSep+
 				"	ID: "+this.id+lineSep+
+				"	InitPeer: "+this.initPeerId+lineSep+
 				"	Expected replication degree: "+this.replicationDeg+lineSep+
 				"	Current chunks replication degree: "+ this.chunksRepDeg.stream().map(peers -> Integer.toString(peers.size())).collect(Collectors.joining(", "));
 	}

@@ -208,7 +208,21 @@ public class FileManager{
 		}
 		return false;
 	}
-
+	
+	public synchronized boolean ownsChunk(String chunkId){
+		
+		String fileId = chunkId.split("_")[0];
+		System.out.println(fileId);
+		
+		for(ServerFile file : this.files){
+			System.out.println(file.getInitPeerId());
+			if(file.getId().compareTo(fileId) == 0 && file.getInitPeerId() == this.serverId)
+				return true;
+		}
+		
+		return false;
+	}
+	
 	public synchronized boolean containsChunk(String chunkId){
 		ServerChunk chunk;
 		for(int i = 0; i < this.chunks.size(); i++){
@@ -217,29 +231,6 @@ public class FileManager{
 				return chunk.onDisk();
 		}
 		return false;
-	}
-	
-	public synchronized boolean canSaveChunk(String chunkId){
-		
-		boolean ownsFile = false;
-		boolean onDisk = false;
-		
-		for(ServerFile file : this.files){
-			if(file.getInitPeerId() == this.serverId)
-				ownsFile = true;
-		}
-		
-		ServerChunk chunk;
-		for(int i = 0; i < this.chunks.size(); i++){
-			chunk = this.chunks.get(i);
-			if(chunk.getId().compareTo(chunkId) == 0)
-				onDisk = chunk.onDisk();
-		}
-		
-		if(ownsFile)
-			return false;
-		else
-			return !onDisk;
 	}
 		
 	public synchronized int getPerceivedRepDeg(String chunkId){

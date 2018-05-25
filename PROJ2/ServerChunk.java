@@ -113,8 +113,8 @@ public class ServerChunk{
 		String repDegStr = this.repDeg == -1 ? "-" : ""+this.repDeg;
 		
 		return "	ID: "+this.id+newLine+
-			   "	FileID: "+this.fileId+newLine+
-			   "	Number: "+this.chunkNr+newLine+
+		//	   "	FileID: "+this.fileId+newLine+
+		//	   "	Number: "+this.chunkNr+newLine+
 			   "	Size: "+this.size+newLine+
 			   "	RepDeg: "+repDegStr+newLine+
 			   "	Perceived RepDeg: "+this.getPerceivedRepDeg()+newLine+

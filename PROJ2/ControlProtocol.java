@@ -171,13 +171,14 @@ public class ControlProtocol implements Runnable {
 		//System.out.println("Processing Removed...");
 		if(this.server.getFileManager().decFileChunkRepDeg(this.fileId, Integer.parseInt(this.chunkNr), Integer.parseInt(this.senderId))){
 			String handlerId = "REMOVED"+this.fileId+"_"+this.chunkNr;
-			System.out.println("Starting removed treatment");
 			this.server.removedThreads.put(handlerId, this);
 			this.sleepRandom();
 			System.out.println("Replication degree below required on chunk nr "+this.chunkNr+" of file "+this.fileId);
 			//System.out.println("Starting chunk back up");
-			if(!this.receivedPutChunk)
+			if(!this.receivedPutChunk){
+				System.out.println("Starting removed chunk backup");
 				this.server.backupChunk(this.fileId,Integer.parseInt(this.chunkNr));
+			}
 			
 			this.server.removedThreads.remove(handlerId);
 		}
