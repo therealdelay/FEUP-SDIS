@@ -37,6 +37,8 @@ public class StoreChunk implements Runnable {
 		if(this.parseRequest())
 			return;
 				
+		this.notifyRemovedThread();
+		
 		FileManager fileManager = this.server.getFileManager();
 		
 		String chunkId = ServerChunk.toId(this.fileId,Integer.parseInt(this.chunkNr));
@@ -45,8 +47,7 @@ public class StoreChunk implements Runnable {
 			System.out.println("File already added");
 		else
 			System.out.println("New File added");	
-
-		/*
+		
 		long randomTimeout = (long) (Math.random() * 400);
 		System.out.println("\n\nRandom timeout is random " + randomTimeout + "\n\n");
 		
@@ -58,9 +59,8 @@ public class StoreChunk implements Runnable {
 
 		if (fileManager.getPerceivedRepDeg(chunkId) >= Integer.parseInt(this.repDeg)) {
 			System.out.println("\nFile was already backed up with enough replication degree in other peers.\n");
-			//return;
+			return;
 		}
-		*/	
 			
 		if(!fileManager.ownsChunk(chunkId)){
 			
@@ -73,9 +73,6 @@ public class StoreChunk implements Runnable {
 		}		
 		else
 			this.printErrMsg("Owner of file");
-		
-		
-		this.notifyRemovedThread();
 	}
 
 	private boolean parseRequest(){
