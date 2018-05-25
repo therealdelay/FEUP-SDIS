@@ -50,17 +50,19 @@ public class FileManager{
 		System.out.println(this.toString());
 	}
 	
-	public synchronized void incChunkRepDeg(String chunkId, int peerId){
+	public synchronized void incChunkRepDeg(String chunkId, int repDeg, int peerId){
 		ServerChunk chunk;
 		for(int i = 0; i < this.chunks.size(); i++){
 			chunk = this.chunks.get(i);
 			if(chunk.getId().compareTo(chunkId) == 0){
+				chunk.setRepDeg(repDeg);
 				chunk.incRepDeg(peerId);
 				return;
 			}
 		}
 		
 		chunk = new ServerChunk(chunkId);
+		chunk.setRepDeg(repDeg);
 		chunk.incRepDeg(peerId);
 		this.chunks.add(chunk);
 	}
@@ -78,18 +80,18 @@ public class FileManager{
 	
 	public synchronized boolean decFileChunkRepDeg(String fileId, int chunkNr, int peerId){
 		
-		String chunkId = ServerChunk.toId(fileId,chunkNr);
-		for(ServerChunk chunk : this.chunks){
-			if(chunk.getId().compareTo(chunkId) == 0)
-				chunk.decRepDeg(peerId);
-		}
-		
 		ServerFile file;
 		for(int i = 0; i < this.files.size(); i++){
 			file = this.files.get(i);
 			if(file.getId().compareTo(fileId) == 0){
-				return file.decChunksRepDeg(chunkNr,peerId);
+				file.decChunksRepDeg(chunkNr,peerId);
 			}
+		}
+		
+		String chunkId = ServerChunk.toId(fileId,chunkNr);
+		for(ServerChunk chunk : this.chunks){
+			if(chunk.getId().compareTo(chunkId) == 0)
+				return (chunk.decRepDeg(peerId) && chunk.onDisk());
 		}
 		
 		return false;
@@ -215,6 +217,29 @@ public class FileManager{
 				return chunk.onDisk();
 		}
 		return false;
+	}
+	
+	public synchronized boolean canSaveChunk(String chunkId){
+		
+		boolean ownsFile = false;
+		boolean onDisk = false;
+		
+		for(ServerFile file : this.files){
+			if(file.getInitPeerId() == this.serverId)
+				ownsFile = true;
+		}
+		
+		ServerChunk chunk;
+		for(int i = 0; i < this.chunks.size(); i++){
+			chunk = this.chunks.get(i);
+			if(chunk.getId().compareTo(chunkId) == 0)
+				onDisk = chunk.onDisk();
+		}
+		
+		if(ownsFile)
+			return false;
+		else
+			return !onDisk;
 	}
 	
 	public int getFileTotalChunks(String fileName){

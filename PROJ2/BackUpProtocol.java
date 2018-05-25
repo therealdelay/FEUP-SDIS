@@ -97,7 +97,7 @@ public class BackUpProtocol implements Runnable {
 			return false;
 		}
 		
-		this.serverFile = new ServerFile(this.fileName, this.replicationDeg);
+		this.serverFile = new ServerFile(this.fileName, this.replicationDeg, this.server.getId());
 		
 		//Get file id
 		

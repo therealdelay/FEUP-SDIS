@@ -39,12 +39,14 @@ public class StoreChunk implements Runnable {
 		else
 			System.out.println("New File added");
 		
-		if(!fileManager.containsChunk(chunkId))
+		if(fileManager.canSaveChunk(chunkId)){
 			this.saveChunk(chunkId);
+			this.sendStoredMsg();
+		}
 		else
-			this.printErrMsg("Already saved");
+			this.printErrMsg("Chunk already saved/owner of file");
 		
-		this.sendStoredMsg();
+		this.notifyRemovedThread();
 	}
 	
 	
@@ -54,22 +56,23 @@ public class StoreChunk implements Runnable {
 		
 		//Parse header elements
 		String[] header = parts[0].split(" ");
-		System.out.println(Arrays.toString(header));
 		this.version = header[1];
 		this.senderId = header[2];
 		this.fileId = header[3];
 		
 		int i = 4;
 		String pathName = header[i++];
-		for(;i<header.length-3;i++)
+		for(;i<header.length-4;i++)
 			pathName += " "+header[i];
-				
+		
 		String creationDate = header[i++];
-		System.out.println(creationDate);
+		//System.out.println("Creation date: "+creationDate);
+		String peerId = header[i++];
+		//System.out.println("Peer ID: "+peerId);
 		this.chunkNr = header[i++];
 		this.repDeg = header[i].trim();
 		
-		this.file = new ServerFile(this.fileId,pathName,Long.parseLong(creationDate),Integer.parseInt(this.repDeg));
+		this.file = new ServerFile(this.fileId,pathName,Long.parseLong(creationDate),Integer.parseInt(this.repDeg),Integer.parseInt(peerId));
 		
 		//Copy actual body
 		int headerLength = parts[0].length()+2;
@@ -126,11 +129,19 @@ public class StoreChunk implements Runnable {
 		}
 	}
 	
+	private void notifyRemovedThread(){
+		ControlProtocol handler = (ControlProtocol) this.server.removedThreads.get("REMOVED"+this.fileId+"_"+this.chunkNr);
+		if(handler != null){
+			System.out.println("StoreChunk: Notifying removed thread for chunk "+this.fileId+" "+this.chunkNr);
+			handler.notifyPutChunk(this.fileId,this.chunkNr);
+		}
+	}
+	
 	private void printErrMsg(String err){
 		System.err.println("Error storing chunk "+this.chunkNr+" of file "+this.fileId+": "+err);
 	}
 	
 	private String getStoredMsg(){
-		return "STORED "+this.version+" "+this.server.getId()+" "+this.fileId+" "+this.chunkNr;
+		return "STORED "+this.version+" "+this.server.getId()+" "+this.fileId+" "+this.chunkNr+" "+this.repDeg;
 	}
 }

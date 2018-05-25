@@ -42,12 +42,12 @@ public class ServerChunk{
 	
 	public void incRepDeg(int peerId){
 		
-		System.out.println("Peer: "+peerId);
+		//System.out.println("Peer: "+peerId);
 		if(!this.peers.contains(peerId))
 			peers.add(peerId);
 		
 		String state = "Curr peers: "+Arrays.toString(this.peers.toArray());
-		System.out.println(state);
+		//System.out.println(state);
 	}
 		
 	public boolean decRepDeg(int peerId){
@@ -80,6 +80,10 @@ public class ServerChunk{
 	
 	public long getSize(){
 		return this.size;
+	}
+	
+	public void setRepDeg(int repDeg){
+		this.repDeg = repDeg;
 	}
 	
 	public void setSize(long size){

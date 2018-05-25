@@ -30,6 +30,7 @@ public class Server implements ServerInterf {
 	
 	private ConcurrentHashMap<String,Runnable> requests;
 	public ConcurrentHashMap<String,Runnable> restoreThreads;
+	public ConcurrentHashMap<String,Runnable> removedThreads;
 	private FileManager fileManager;
 		
 	public final static int MAX_WAIT = 400;
@@ -85,6 +86,7 @@ public class Server implements ServerInterf {
 		this.fileManager = new FileManager(this.id);
 		this.requests = new ConcurrentHashMap<String,Runnable>();
 		this.restoreThreads = new ConcurrentHashMap<String,Runnable>();
+		this.removedThreads = new ConcurrentHashMap<String,Runnable>();
 		
 	    //Create Server Working Directory
 		this.createSWD(args);
