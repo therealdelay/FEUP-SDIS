@@ -10,14 +10,14 @@ public class BackUpProtocol implements Runnable {
 	
 	private final static int[] TIMEOUT_VALS = {1,2,4,8,16};
 	private final static int MAX_TRIES = 5;
-	
+
 	private Server server;
 	private String fileName;
 	private String fileId;
 	private int chunkNr;
 	private int replicationDeg;
 	private ReentrantLock lock;
-	
+
 	private int currChunk = -1;
 	private ArrayList<ArrayList<Integer>> chunkPeers;
 	

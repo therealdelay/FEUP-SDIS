@@ -11,12 +11,13 @@ public class ServerChunk{
 	private int repDeg = -1;
 	private ArrayList<Integer> peers; //keeps track of the unique peers that have stored the chunk
 	
-	public ServerChunk(String id){
+	public ServerChunk(String id, String fileEncryptedId){
 		this.id = id;
 		
-		String[] parts = this.id.split("\\.")[0].split("_");
-		this.fileId = fileId;
-		this.chunkNr = chunkNr;
+		String[] parts = this.id.split("_");
+		this.fileId = parts[0];
+		this.fileEncryptedId = fileEncryptedId;
+		this.chunkNr = Integer.parseInt(parts[1]);
 		this.size = size;
 		this.peers = new ArrayList<Integer>();
 		this.onDisk = false;
@@ -25,7 +26,7 @@ public class ServerChunk{
 	public ServerChunk(String id, String fileEncryptedId, long size, int repDeg){
 		this.id  = id;
 
-		String[] parts = this.id.split("\\.")[0].split("_");
+		String[] parts = this.id.split("_");
 		this.fileId = parts[0];
 		this.fileEncryptedId = fileEncryptedId;
 		this.chunkNr = Integer.parseInt(parts[1]);
@@ -37,23 +38,22 @@ public class ServerChunk{
 	}
 	
 	public static String toId(String fileId, int chunkNr){
-		String[] parts = fileId.split("\\.");
+ 		String[] parts = fileId.split("\\.");
 		String chunkId = parts[0]+"_"+chunkNr;
 		return chunkId;
 	}
 	
-	public void incRepDeg(int peerId){
-		
-		System.out.println("Peer: "+peerId);
+	public void incRepDeg(int peerId){		
+		//System.out.println("Peer: "+peerId);
 		if(!this.peers.contains(peerId))
 			peers.add(peerId);
 		
 		String state = "Curr peers: "+Arrays.toString(this.peers.toArray());
-		System.out.println(state);
+		//System.out.println(state);
 	}
 		
 	public boolean decRepDeg(int peerId){
-		this.peers.remove(new Integer(peerId));
+		this.peers.remove(Integer.valueOf(peerId));
 		if(this.repDeg != -1)
 			return this.peers.size() < this.repDeg;
 		else
@@ -88,6 +88,10 @@ public class ServerChunk{
 		return this.size;
 	}
 	
+	public void setRepDeg(int repDeg){
+		this.repDeg = repDeg;
+	}
+	
 	public void setSize(long size){
 		this.size = size;
 	}
@@ -116,6 +120,8 @@ public class ServerChunk{
 		String repDegStr = this.repDeg == -1 ? "-" : ""+this.repDeg;
 		
 		return "	ID: "+this.id+newLine+
+		//	   "	FileID: "+this.fileId+newLine+
+		//	   "	Number: "+this.chunkNr+newLine+
 			   "	Size: "+this.size+newLine+
 			   "	RepDeg: "+repDegStr+newLine+
 			   "	Perceived RepDeg: "+this.getPerceivedRepDeg()+newLine+

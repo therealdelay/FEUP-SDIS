@@ -36,25 +36,45 @@ public class StoreChunk implements Runnable {
 	public void run (){	
 		if(this.parseRequest())
 			return;
+				
+		this.notifyRemovedThread();
 		
 		FileManager fileManager = this.server.getFileManager();
-	
+		
 		String chunkId = ServerChunk.toId(this.fileId,Integer.parseInt(this.chunkNr));
 		
 		if(!this.server.getFileManager().addFile(this.file))
 			System.out.println("File already added");
 		else
-			System.out.println("New File added");
+			System.out.println("New File added");	
 		
-		if(!fileManager.containsChunk(chunkId))
-			this.saveChunk(chunkId);
+		long randomTimeout = (long) (Math.random() * 400);
+		System.out.println("\n\nRandom timeout is random " + randomTimeout + "\n\n");
+		
+		try {
+			Thread.sleep(randomTimeout);
+		} catch (InterruptedException e) {
+			System.out.println(e.toString());
+		}
+
+		if (fileManager.getPerceivedRepDeg(chunkId) >= Integer.parseInt(this.repDeg)) {
+			System.out.println("\nFile was already backed up with enough replication degree in other peers.\n");
+			return;
+		}
+			
+		if(!fileManager.ownsChunk(chunkId)){
+			
+			this.sendStoredMsg();
+			
+			if(!fileManager.containsChunk(chunkId))
+				this.saveChunk(chunkId);
+			else
+				this.printErrMsg("Chunk already saved");
+		}		
 		else
-			this.printErrMsg("Already saved");
-		
-		this.sendStoredMsg();
+			this.printErrMsg("Owner of file");
 	}
-	
-	
+
 	private boolean parseRequest(){
 		String msg = new String(this.buf);
 		String[] parts = msg.split("\r\n");
@@ -69,14 +89,16 @@ public class StoreChunk implements Runnable {
 		
 		int i = 5;
 		String pathName = header[i++];
-		for(;i<header.length-3;i++)
+		for(;i<header.length-4;i++)
 			pathName += " "+header[i];
 				
 		String lastModified = header[i++];
+		String peerId = header[i++];
+		System.out.println("Peer ID: "+peerId);
 		this.chunkNr = header[i++];
 		this.repDeg = header[i].trim();
 		
-		this.file = new ServerFile(this.fileId, encryptedFileId, pathName,Long.parseLong(lastModified),Integer.parseInt(this.repDeg));
+		this.file = new ServerFile(this.fileId, this.encryptedFileId, pathName,Long.parseLong(lastModified),Integer.parseInt(this.repDeg), Integer.parseInt(peerId));
 		
 		//Copy actual body
 		int headerLength = parts[0].length()+2;
@@ -113,17 +135,6 @@ public class StoreChunk implements Runnable {
 		TwinMulticastSocket socket = this.server.getMCsocket();
 		DatagramPacket packet = new DatagramPacket(msg.getBytes(), msg.length(), socket.getGroup(), socket.getPort());
 		
-		//Sleep between 0 and MAX_WAIT
-		Random rand = new Random();
-		int waitTime = rand.nextInt(Server.MAX_WAIT+1);
-		
-		try{
-			Thread.sleep(waitTime);
-		}
-		catch(InterruptedException e){
-			this.printErrMsg("Sleep interrupted");
-		}
-		
 		//Send response
 		try{
 			socket.send(packet);
@@ -136,11 +147,19 @@ public class StoreChunk implements Runnable {
 		}
 	}
 	
+	private void notifyRemovedThread(){
+		ControlProtocol handler = (ControlProtocol) this.server.removedThreads.get("REMOVED"+this.fileId+"_"+this.chunkNr);
+		if(handler != null){
+			System.out.println("StoreChunk: Notifying removed thread for chunk "+this.fileId+" "+this.chunkNr);
+			handler.notifyPutChunk(this.fileId,this.chunkNr);
+		}
+	}
+	
 	private void printErrMsg(String err){
 		System.err.println("Error storing chunk "+this.chunkNr+" of file "+this.fileId+": "+err);
 	}
 	
 	private String getStoredMsg(){
-		return "STORED "+this.version+" "+this.server.getId()+" " + this.encryptedFileId + " "+this.fileId+" "+this.chunkNr;
+		return "STORED "+this.version+" "+this.server.getId()+" " + this.encryptedFileId + " "+this.fileId+" "+this.chunkNr+" "+this.repDeg;
 	}
 }

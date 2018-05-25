@@ -40,6 +40,7 @@ public class Server implements ServerInterf {
 	
 	private ConcurrentHashMap<String,Runnable> requests;
 	public ConcurrentHashMap<String,Runnable> restoreThreads;
+	public ConcurrentHashMap<String,Runnable> removedThreads;
 	private FileManager fileManager;
 		
 	public final static int MAX_WAIT = 400;
@@ -123,12 +124,13 @@ public class Server implements ServerInterf {
 		this.fileManager = new FileManager(this.id);
 		this.requests = new ConcurrentHashMap<String,Runnable>();
 		this.restoreThreads = new ConcurrentHashMap<String,Runnable>();
+		this.removedThreads = new ConcurrentHashMap<String,Runnable>();
 		
 	    //Create Server Working Directory
 		this.createSWD(args);
 		this.fileManager.setWDir(this.SWD);
 		
-		this.pool = new ThreadPoolExecutor(5,10,10,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(10));
+		this.pool = new ThreadPoolExecutor(5,30,10,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(10));
 		
 		//Start multicast channels listener threads
 		this.startListenerThreads();
@@ -257,6 +259,41 @@ public class Server implements ServerInterf {
 		return answer;
 	}
 	
+	private String listFiles(SecretKeySpec clientKey, ArrayList<ServerFile> files){
+
+		ArrayList<ServerFile> userFiles = new ArrayList<ServerFile>();
+		for(ServerFile file : files){
+			if(file.testKey(clientKey))
+				userFiles.add(file);
+		}
+
+		Collections.sort(userFiles);
+
+		String newLine = System.lineSeparator();
+
+		String list = "-------------------------------------------------------------------"+newLine+
+					  "                               Files                               "+newLine+newLine;
+
+
+		if(userFiles.size() == 0){
+			list +="                           Empty                               "+newLine+newLine;
+		}
+		else{
+			for(ServerFile file : userFiles)
+				list += file.toList()+newLine;
+		}
+
+		list += "-------------------------------------------------------------------";
+
+		return list;
+	}
+
+	public String list(SecretKeySpec clientKey){
+		this.printRequest("LIST");
+		ArrayList<ServerFile> files = this.fileManager.getFiles();
+		return this.listFiles(clientKey,files);
+	}
+
 	public String state(){
 		this.printRequest("STATE");
 		return this.fileManager.toString();
@@ -335,8 +372,7 @@ public class Server implements ServerInterf {
 				
 				
 				System.out.println("Packet received at MCsocket: " + new String(packet.getData()).trim() + "\n");
-				Thread handler = new Thread(new ControlProtocol(this.server, packet.getData()));
-				handler.start();
+				pool.execute(new ControlProtocol(this.server, packet.getData()));
 			}
 		}
 
@@ -366,8 +402,7 @@ public class Server implements ServerInterf {
 					System.err.println("MDBsocket packet received is insecure: " + e);
 				}
 				
-				Thread handler = new Thread(new StoreChunk(this.server, packet.getData(), packet.getLength()));
-				handler.start();
+				pool.execute(new StoreChunk(this.server, packet.getData(), packet.getLength()));
 			}
 		}
 		
@@ -397,9 +432,7 @@ public class Server implements ServerInterf {
 					System.err.println("MDRsocket packet received is insecure: " + e);
 				}
 				
-				System.out.println("RECEIVE: " + packet.getData().length + " : " + packet.getLength());
-				Thread handler = new Thread(new Chunk(this.server, packet.getData(), packet.getLength()));
-				handler.start();
+				pool.execute(new Chunk(this.server, packet.getData(), packet.getLength()));
 			}
 		}
 	}

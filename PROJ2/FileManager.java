@@ -4,6 +4,7 @@ import java.net.*;
 import java.lang.*;
 import java.util.*;
 import java.util.stream.*;
+import static java.util.stream.Collectors.*;
 
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.NoSuchPaddingException;
@@ -56,17 +57,19 @@ public class FileManager{
 		System.out.println(this.toString());
 	}
 	
-	public synchronized void incChunkRepDeg(String chunkId, int peerId){
+	public synchronized void incChunkRepDeg(String chunkId, String fileEncryptedId, int repDeg, int peerId){
 		ServerChunk chunk;
 		for(int i = 0; i < this.chunks.size(); i++){
 			chunk = this.chunks.get(i);
 			if(chunk.getId().compareTo(chunkId) == 0){
+				chunk.setRepDeg(repDeg);
 				chunk.incRepDeg(peerId);
 				return;
 			}
 		}
 		
-		chunk = new ServerChunk(chunkId);
+		chunk = new ServerChunk(chunkId, fileEncryptedId);
+		chunk.setRepDeg(repDeg);
 		chunk.incRepDeg(peerId);
 		this.chunks.add(chunk);
 	}
@@ -84,18 +87,18 @@ public class FileManager{
 	
 	public synchronized boolean decFileChunkRepDeg(String fileId, int chunkNr, int peerId){
 		
-		String chunkId = ServerChunk.toId(fileId,chunkNr);
-		for(ServerChunk chunk : this.chunks){
-			if(chunk.getId().compareTo(chunkId) == 0)
-				chunk.decRepDeg(peerId);
-		}
-		
 		ServerFile file;
 		for(int i = 0; i < this.files.size(); i++){
 			file = this.files.get(i);
 			if(file.getId().compareTo(fileId) == 0){
-				return file.decChunksRepDeg(chunkNr,peerId);
+				file.decChunksRepDeg(chunkNr,peerId);
 			}
+		}
+		
+		String chunkId = ServerChunk.toId(fileId,chunkNr);
+		for(ServerChunk chunk : this.chunks){
+			if(chunk.getId().compareTo(chunkId) == 0)
+				return (chunk.decRepDeg(peerId) && chunk.onDisk());
 		}
 		
 		return false;
@@ -111,7 +114,10 @@ public class FileManager{
 		}
 		return null;
 	}
-	
+
+	public synchronized ArrayList<ServerFile> getFiles(){
+			return this.files.stream().map(ServerFile::new).collect(toCollection(ArrayList::new));
+	}
 	
 	public synchronized String getFilePath(String fileId){
 		ServerFile file;
@@ -247,7 +253,21 @@ public class FileManager{
 		}
 		return false;
 	}
-
+	
+	public synchronized boolean ownsChunk(String chunkId){
+		
+		String fileId = chunkId.split("_")[0];
+		System.out.println(fileId);
+		
+		for(ServerFile file : this.files){
+			System.out.println(file.getInitPeerId());
+			if(file.getId().compareTo(fileId) == 0 && file.getInitPeerId() == this.serverId)
+				return true;
+		}
+		
+		return false;
+	}
+	
 	public synchronized boolean containsChunk(String chunkId){
 		ServerChunk chunk;
 		for(int i = 0; i < this.chunks.size(); i++){
@@ -256,6 +276,16 @@ public class FileManager{
 				return chunk.onDisk();
 		}
 		return false;
+	}
+		
+	public synchronized int getPerceivedRepDeg(String chunkId){
+		ServerChunk chunk;
+		for(int i = 0; i < this.chunks.size(); i++){
+			chunk = this.chunks.get(i);
+			if(chunk.getId().compareTo(chunkId) == 0)
+				return chunk.getPerceivedRepDeg();
+		}
+		return -1;
 	}
 	
 	public int getFileTotalChunks(String fileName){
@@ -327,7 +357,7 @@ public class FileManager{
 	public synchronized long getUsedMem(){
 		return this.usedMem;
 	}
-	
+
 	public synchronized String toString(){
 		String lineSep = System.lineSeparator();
 		String doubleLineSep = lineSep+lineSep;
