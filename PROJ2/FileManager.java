@@ -5,6 +5,12 @@ import java.lang.*;
 import java.util.*;
 import java.util.stream.*;
 
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
+
 public class FileManager{
 	private int serverId;
 	private ArrayList<ServerFile> files;
@@ -33,7 +39,7 @@ public class FileManager{
 		return true;
 	}
 	
-	public synchronized void addChunk(String chunkId, int size, int repDeg, int peerId){
+	public synchronized void addChunk(String chunkId, String fileEncryptedId, int size, int repDeg, int peerId){
 		this.usedMem += size;
 		
 		for(ServerChunk chunk : this.chunks){
@@ -44,13 +50,13 @@ public class FileManager{
 			}
 		}
 		
-		ServerChunk chunk = new ServerChunk(chunkId,size,repDeg);
+		ServerChunk chunk = new ServerChunk(chunkId, fileEncryptedId, size,repDeg);
 		chunk.incRepDeg(peerId);
 		this.chunks.add(chunk);
 		System.out.println(this.toString());
 	}
 	
-	public synchronized void incChunkRepDeg(String chunkId, int repDeg, int peerId){
+	public synchronized void incChunkRepDeg(String chunkId, String fileEncryptedId, int repDeg, int peerId){
 		ServerChunk chunk;
 		for(int i = 0; i < this.chunks.size(); i++){
 			chunk = this.chunks.get(i);
@@ -61,7 +67,7 @@ public class FileManager{
 			}
 		}
 		
-		chunk = new ServerChunk(chunkId);
+		chunk = new ServerChunk(chunkId, fileEncryptedId);
 		chunk.setRepDeg(repDeg);
 		chunk.incRepDeg(peerId);
 		this.chunks.add(chunk);
@@ -159,7 +165,19 @@ public class FileManager{
 		return chunksToRemove;
 	}
 	
-	public void removeAllChunks(String fileId){
+	public void removeAllChunks(String fileId, String secretKey){ 
+		Cipher cipher; 
+		SecretKeySpec key;
+		
+		try {
+			cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+			byte[] decodedKey = Base64.getDecoder().decode(secretKey);
+			key = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
+
+		} catch(NoSuchAlgorithmException | NoSuchPaddingException e){
+			System.err.println("Error Removing All Chunks");
+			return;
+		}
 		
 		//Delete file if exists
 		synchronized(this.files){
@@ -167,8 +185,21 @@ public class FileManager{
 			for(int i = 0; i < this.files.size(); i++){
 				serverFile = this.files.get(i);
 				if(serverFile.getId().compareTo(fileId) == 0){
-					this.files.remove(i);
-					break;
+					
+					//delete if user is authorized
+					try {
+						
+						cipher.init(Cipher.DECRYPT_MODE, key);
+						byte[] encryptedFileName = Base64.getDecoder().decode(serverFile.getEncryptedId());
+						cipher.doFinal(encryptedFileName);
+
+						//it can decrypt
+						this.files.remove(i);
+						break;
+					}
+					catch(Exception e){
+						System.out.println("The client ins't authorize to delete this file");
+					}
 				}
 			}
 		}
@@ -180,10 +211,20 @@ public class FileManager{
 			for(int i = 0; i < this.chunks.size(); i++){
 				chunk = this.chunks.get(i);
 				if(chunk.getId().matches("(.*)"+fileId+"(.*)")){
-					this.chunks.remove(i);
-					this.usedMem -= chunk.getSize();
-					chunksToRemove.add(chunk.getId());
-					i--;
+
+					try {
+						cipher.init(Cipher.DECRYPT_MODE, key);
+						byte[] encryptedFileName = Base64.getDecoder().decode(chunk.getFileEncryptedId());
+						cipher.doFinal(encryptedFileName);
+	
+						this.chunks.remove(i);
+						this.usedMem -= chunk.getSize();
+						chunksToRemove.add(chunk.getId());
+						i--;
+					}
+					catch(Exception e) {
+						System.out.println("The client ins't authorize to delete this file");
+					}
 				}
 			}
 			this.toString();
@@ -297,7 +338,9 @@ public class FileManager{
 			outFile.createNewFile();
 			outStream = new FileOutputStream(outFile);
 		}
-		catch(IOException e){}
+		catch(IOException e){
+			System.err.println("Error creating file to save chunk : " + e);
+		}
 		
 		return outStream;
 	}

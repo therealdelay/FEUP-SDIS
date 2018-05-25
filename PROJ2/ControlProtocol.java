@@ -20,6 +20,7 @@ public class ControlProtocol implements Runnable {
 	private String version;
 	private String senderId;
 	private String fileId;
+	private String fileEncryptedId;
 	private String chunkNr;
 	private String repDeg;
 	private boolean sendChunk;
@@ -46,14 +47,16 @@ public class ControlProtocol implements Runnable {
 		
 		//Parse header elements
 		String[] header = parts[0].trim().split(" ");
+		//System.out.println("HEADER: " + parts[0]);
 		this.msgType = header[0];
 		this.version = header[1];
 		this.senderId = header[2];
-		this.fileId = header[3];
-		if(header.length > 4){
-			this.chunkNr = header[4];
-			if(header.length > 5)
-				this.repDeg = header[5];
+		this.fileEncryptedId = header[3];
+		this.fileId = header[4];
+		if(header.length > 5){
+			this.chunkNr = header[5];
+			if(header.length > 6)
+				this.repDeg = header[6];
 		}
 		
 		if(this.senderId.compareTo(""+this.server.getId()) == 0){
@@ -111,7 +114,7 @@ public class ControlProtocol implements Runnable {
 		int senderId = Integer.parseInt(this.senderId);
 		int repDeg = Integer.parseInt(this.repDeg);
 		String chunkId = ServerChunk.toId(this.fileId,chunkNr);
-		this.server.getFileManager().incChunkRepDeg(chunkId,repDeg,senderId);
+		this.server.getFileManager().incChunkRepDeg(chunkId,this.fileEncryptedId,repDeg,senderId);
 		
 	}
 	
@@ -132,7 +135,7 @@ public class ControlProtocol implements Runnable {
 		FileInputStream inStream = fileManager.getInStream(fileName);
 
 		//Read
-		byte[] buf = new byte[Server.MAX_CHUNK_SIZE];
+		byte[] buf = new byte[Server.MAX_CHUNK_SIZE_ENCRYPTED];
 		int read;
 		try{
 			read = inStream.read(buf);
@@ -145,6 +148,8 @@ public class ControlProtocol implements Runnable {
 
 		byte[] cleanBuf = new byte[read];
 		System.arraycopy(buf,0,cleanBuf,0,read);
+
+		System.out.println("ProcessGetChunk: " + cleanBuf.length  + " : Read: " + read);
 		
 		this.sleepRandom();
 
@@ -162,7 +167,7 @@ public class ControlProtocol implements Runnable {
 	
 	private void processDelete(){
 		System.out.println("Processing Delete...");
-		this.server.getFileManager().removeAllChunks(this.fileId);
+		this.server.getFileManager().removeAllChunks(this.fileId, this.fileEncryptedId); //fileEncrypted is the secretKey
 		System.out.println("File deleted!");
 	}
 

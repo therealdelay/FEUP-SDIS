@@ -19,6 +19,7 @@ import javax.crypto.IllegalBlockSizeException;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 public class Server implements ServerInterf {
 
@@ -44,6 +45,7 @@ public class Server implements ServerInterf {
 		
 	public final static int MAX_WAIT = 400;
 	public final static int MAX_CHUNK_SIZE = 64000;
+	public final static int MAX_CHUNK_SIZE_ENCRYPTED = 64096;
 	private final static int MAX_BUFFER_SIZE = 70000;
 	public final static int MAX_MEM = 8388608;
 
@@ -199,11 +201,12 @@ public class Server implements ServerInterf {
 		return msg;
 	}
 	
-	public void backup(String fileName, int repDegree){
+	public void backup(SecretKeySpec clientKey, String fileName, int repDegree) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException{
 		this.printRequest("BACKUP "+fileName+" "+repDegree);
-		Runnable handler = new BackUpProtocol(this, fileName, repDegree);
+		Runnable handler = new BackUpProtocol(this, fileName, repDegree, clientKey);
 		this.requests.put("BACKUP"+ServerFile.toId(fileName), handler);
 		this.pool.execute(handler);
+		
 	}
 	
 	public void backupChunk(String fileId, int chunkNr){
@@ -212,22 +215,23 @@ public class Server implements ServerInterf {
 		this.pool.execute(handler);
 	}
 	
-	public void restore(String fileName) throws RemoteException {
+	public void restore(SecretKeySpec clientKey, String fileName) throws RemoteException, IOException,NoSuchPaddingException, NoSuchAlgorithmException {
 		this.printRequest("RESTORE "+fileName);
+		// TODO: verify this
 		String fileId = ServerFile.toId(fileName);
-		Runnable handler = new RestoreProtocol(this, fileName, fileId);
+		Runnable handler = new RestoreProtocol(this, fileName, fileId, clientKey);
 		this.requests.put("RESTORE"+ServerFile.toId(fileName), handler);
 		this.pool.execute(handler);
 	}
 	
-	public void delete(String fileName){
+	public void delete(SecretKeySpec clientKey, String fileName) throws NoSuchPaddingException, NoSuchAlgorithmException{
 		this.printRequest("DELETE "+fileName);
-		this.pool.execute(new DeleteProtocol(this, fileName));
+		this.pool.execute(new DeleteProtocol(this, fileName, clientKey));
 	}
 	
-	public void reclaim(int mem){
+	public void reclaim(SecretKeySpec clientKey, int mem) throws NoSuchPaddingException, NoSuchAlgorithmException{
 		this.printRequest("RECLAIM "+mem);
-		this.pool.execute(new ReclaimProtocol(this, mem));
+		this.pool.execute(new ReclaimProtocol(this, mem, clientKey));
 	}
 	
 	public String state(){
@@ -293,7 +297,7 @@ public class Server implements ServerInterf {
 		@Override
 		public void run() {
 			while(true){
-				byte buf[] = new byte[100];
+				byte buf[] = new byte[200];
 				DatagramPacket packet = new DatagramPacket(buf,buf.length);
 		
 				try{

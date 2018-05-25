@@ -9,16 +9,26 @@ import java.util.concurrent.locks.*;
 import java.security.InvalidKeyException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
+import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class ReclaimProtocol implements Runnable {
 	
 	private Server server;
 	private int size;
 	private ArrayList<ServerChunk> deletedChunks;
+
+	private SecretKeySpec secretKey;
+	private Cipher cipher;
 	
-	public ReclaimProtocol(Server server, int size){
+	public ReclaimProtocol(Server server, int size, SecretKeySpec clientKey){
 		this.server = server;
 		this.size = size;
+		this.secretKey = clientKey;
 	}
 	
 	@Override
@@ -43,13 +53,13 @@ public class ReclaimProtocol implements Runnable {
 		ServerChunk chunk;
 		for(int i = 0; i < this.deletedChunks.size(); i++){
 			chunk = this.deletedChunks.get(i);
-			this.sendRemovedMsg(chunk.getFileId(), chunk.getChunkNr());
-			System.out.println("Sent REMOVED for chunk: "+chunk.getId());
+			this.sendRemovedMsg(chunk.getFileId(), chunk.getFileEncryptedId(), chunk.getChunkNr());
+			System.out.println("Sent REMOVED for chunk: "+chunk.getId() +" "+ chunk.getFileEncryptedId());
 		}
 	}
 	
-	private void sendRemovedMsg(String fileId, int chunkNr){
-		String msg = this.getRemovedMsg(fileId, chunkNr);
+	private void sendRemovedMsg(String fileId, String fileEncryptedId, int chunkNr){
+		String msg = this.getRemovedMsg(fileId, fileEncryptedId, chunkNr);
 		TwinMulticastSocket socket = this.server.getMCsocket();
 		DatagramPacket packet = new DatagramPacket(msg.getBytes(), msg.length(), socket.getGroup(), socket.getPort());
 		
@@ -65,8 +75,8 @@ public class ReclaimProtocol implements Runnable {
 		}
 	}
 	
-	private String getRemovedMsg(String fileId, int chunkNr){
-		return "REMOVED "+this.server.getVersion()+" "+this.server.getId()+" "+fileId + " " + chunkNr;
+	private String getRemovedMsg(String fileId, String fileEncryptedId, int chunkNr){
+		return "REMOVED "+this.server.getVersion()+" "+this.server.getId()+" "+fileId + " " + fileEncryptedId + " " + chunkNr;
 	}
 	
 	private void printErrMsg(String err){

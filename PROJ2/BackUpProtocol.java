@@ -8,6 +8,11 @@ import java.util.concurrent.*;
 import java.security.InvalidKeyException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
+import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 public class BackUpProtocol implements Runnable {
 	
@@ -21,16 +26,23 @@ public class BackUpProtocol implements Runnable {
 	private String chunkId;
 	private int chunkNr;
 	private int replicationDeg;
+
+	private SecretKeySpec secretKey;
+	private Cipher cipher;
 	
 	private int currChunk = 0;
 	
 	private FileInputStream inStream = null;
 	
-	public BackUpProtocol(Server server, String fileName, int replicationDeg){
+	public BackUpProtocol(Server server, String fileName, int replicationDeg, SecretKeySpec clientKey) throws IOException, UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchPaddingException
+	{
 		this.server = server;
 		this.fileName = fileName;
 		this.chunkNr = -1;
 		this.replicationDeg = replicationDeg;
+
+		this.secretKey = clientKey;
+		this.cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 	}
 	
 	public BackUpProtocol(Server server, String fileId, int chunkNr, int replicationDeg){
@@ -62,7 +74,7 @@ public class BackUpProtocol implements Runnable {
 			return false;
 		}
 		
-		this.serverFile = new ServerFile(this.fileName, this.replicationDeg, this.server.getId());
+		this.serverFile = new ServerFile(this.fileName, this.replicationDeg, file.lastModified(), this.secretKey, this.server.getId());
 		
 		//Get file id
 		this.fileId = serverFile.getId();
@@ -105,7 +117,10 @@ public class BackUpProtocol implements Runnable {
 				
 				byte[] body = new byte[read];
 				System.arraycopy(buf,0,body,0,read);
-				if(!this.backUpChunk(body)){
+
+				byte[] encryptedBody = encryptBody(body);
+
+				if(!this.backUpChunk(encryptedBody)){
 					this.exit_err("Unable to reach required replication degree in chunk "+this.currChunk);
 					return;
 				}
@@ -117,10 +132,20 @@ public class BackUpProtocol implements Runnable {
 			this.exit_err("Unable to read src file in chunk "+this.currChunk);
 			return;
 		}
+		catch(InvalidKeyException | BadPaddingException | IllegalBlockSizeException e){
+			this.exit_err("Error encrypting chunk "+this.currChunk);
+			return;
+		}
 		
 		this.exit();
 	}
-	
+
+	public byte[] encryptBody(byte[] body) throws IOException,InvalidKeyException,BadPaddingException,IllegalBlockSizeException
+	{
+		this.cipher.init(Cipher.ENCRYPT_MODE, this.secretKey);
+		return this.cipher.doFinal(body);
+	}
+
 	private void backUpFileChunk(){
 		
 		this.inStream = this.server.getFileManager().getInStream(this.fileName);
@@ -149,6 +174,7 @@ public class BackUpProtocol implements Runnable {
 		this.exit();
 	}
 	
+	
 	private String getPutChunkHeader(){
 		return "PUTCHUNK "+this.server.getVersion()+" "+this.server.getId()+" "+this.serverFile.toMsg()+" "+this.currChunk+" "+this.replicationDeg;
 	}
@@ -168,6 +194,7 @@ public class BackUpProtocol implements Runnable {
 			byte[] msg = this.getPutChunkMsg(buf);
 			TwinMulticastSocket socket = this.server.getMDBsocket();
 			DatagramPacket packet = new DatagramPacket(msg, msg.length, socket.getGroup(), socket.getPort());
+			
 			try{
 				socket.send(packet);
 			}

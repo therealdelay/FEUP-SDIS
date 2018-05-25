@@ -9,6 +9,8 @@ import java.util.concurrent.locks.*;
 import java.security.InvalidKeyException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
+import java.util.Base64;
+
 
 public class StoreChunk implements Runnable {
 	
@@ -20,6 +22,7 @@ public class StoreChunk implements Runnable {
 	private String senderId;
 	private ServerFile file;
 	private String fileId;
+	private String encryptedFileId;
 	private String chunkNr;
 	private String repDeg;
 	
@@ -81,23 +84,24 @@ public class StoreChunk implements Runnable {
 		
 		//Parse header elements
 		String[] header = parts[0].split(" ");
+		System.out.println("\n" + Arrays.toString(header) + "\n");
 		this.version = header[1];
 		this.senderId = header[2];
-		this.fileId = header[3];
+		this.encryptedFileId = header[3];
+		this.fileId = header[4];
 		
-		int i = 4;
+		int i = 5;
 		String pathName = header[i++];
 		for(;i<header.length-4;i++)
 			pathName += " "+header[i];
-		
-		String creationDate = header[i++];
-		System.out.println("Creation date: "+creationDate);
+				
+		String lastModified = header[i++];
 		String peerId = header[i++];
 		System.out.println("Peer ID: "+peerId);
 		this.chunkNr = header[i++];
 		this.repDeg = header[i].trim();
 		
-		this.file = new ServerFile(this.fileId,pathName,Long.parseLong(creationDate),Integer.parseInt(this.repDeg),Integer.parseInt(peerId));
+		this.file = new ServerFile(this.fileId, this.encryptedFileId, pathName,Long.parseLong(lastModified),Integer.parseInt(this.repDeg), Integer.parseInt(peerId));
 		
 		//Copy actual body
 		int headerLength = parts[0].length()+2;
@@ -125,7 +129,7 @@ public class StoreChunk implements Runnable {
 			this.printErrMsg("Unable to save chunk");
 		}
 		
-		fileManager.addChunk(chunkId,this.chunkBody.length,Integer.parseInt(this.repDeg),this.server.getId());
+		fileManager.addChunk(chunkId,this.encryptedFileId,this.chunkBody.length,Integer.parseInt(this.repDeg),this.server.getId());
 		System.out.println("Chunk nr "+this.chunkNr+" of file "+this.fileId+" saved");
 	}
 	
@@ -159,6 +163,6 @@ public class StoreChunk implements Runnable {
 	}
 	
 	private String getStoredMsg(){
-		return "STORED "+this.version+" "+this.server.getId()+" "+this.fileId+" "+this.chunkNr+" "+this.repDeg;
+		return "STORED "+this.version+" "+this.server.getId()+" " + this.encryptedFileId + " "+this.fileId+" "+this.chunkNr+" "+this.repDeg;
 	}
 }

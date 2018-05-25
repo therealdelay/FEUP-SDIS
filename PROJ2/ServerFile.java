@@ -8,35 +8,51 @@ import java.lang.*;
 import java.security.*;
 import java.util.*;
 import java.util.stream.*;
+
+import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.Cipher;
+import java.util.Base64;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.BadPaddingException;
+
+
+
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
 public class ServerFile{
 	private String id;
+	private String encryptedId;
 	private String pathName;
-	private FileTime creationDate;
+	private long lastModified;
+	//private FileTime creationDate;
 	private int replicationDeg;
 	private int initPeerId;
 	private ArrayList<ArrayList<Integer>> chunksRepDeg;
 	
-	public ServerFile(String fileName, int replicationDeg, int peerId){
+	public ServerFile(String fileName, int replicationDeg, long lastModified, SecretKeySpec secretKey, int peerId){
 		this.pathName = ServerFile.toPathName(fileName);
 		this.id = ServerFile.toId(fileName);
-		this.readCreationDate();
+		this.encryptedId = ServerFile.toEncryptedId(fileName, secretKey);
+		this.lastModified = lastModified;
+		//this.readCreationDate();
 		this.replicationDeg = replicationDeg;
 		this.initPeerId = peerId;
 		this.chunksRepDeg = new ArrayList<ArrayList<Integer>>();
 	}
 	
-	public ServerFile(String fileId, String pathName, long creationDate, int replicationDeg, int peerId){
+	public ServerFile(String fileId, String encryptedFileID, String pathName, long lastModified, int replicationDeg, int peerId){
 		this.id = fileId;
+		this.encryptedId = encryptedFileID; 
 		this.pathName = pathName;
-		this.readCreationDate();
+		this.lastModified = lastModified;
+		//this.readCreationDate();
 		this.replicationDeg = replicationDeg;
 		this.initPeerId = peerId;
 		this.chunksRepDeg = new ArrayList<ArrayList<Integer>>();
 	}
-	
+	/*
 	public void readCreationDate(){
 		Path file = Paths.get(this.pathName);
 		try{
@@ -48,7 +64,7 @@ public class ServerFile{
 			this.creationDate = null;
 			e.printStackTrace();
 		}
-	}
+	}*/
 	
 	public String getPathName(){
 		return this.pathName;
@@ -56,6 +72,10 @@ public class ServerFile{
 	
 	public String getId(){
 		return this.id;
+	}
+
+	public String getEncryptedId() {
+		return this.encryptedId;
 	}
 	
 	public static String toRelativeName(String fileName){
@@ -69,8 +89,11 @@ public class ServerFile{
 	}
 	
 	public static String toId(String fileName){
+
 		String path = ServerFile.toPathName(fileName);
+
 		try{
+			
 			MessageDigest digest = MessageDigest.getInstance("SHA-256"); 
 			byte[] hash = digest.digest(path.getBytes("UTF-8")); 
 			StringBuffer hexString = new StringBuffer(); 
@@ -85,6 +108,27 @@ public class ServerFile{
 		catch(Exception ex){
 			throw new RuntimeException(ex); 
 		}
+	}
+
+	public static String toEncryptedId(String fileName, SecretKeySpec secretKey){
+		String path = ServerFile.toPathName(fileName);
+		File file = new File(path);
+		path += "_" + file.lastModified();
+
+		try {
+			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+			cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+	
+			byte[] tmp = Base64.getEncoder().encode(cipher.doFinal(path.getBytes()));
+			return new String(tmp);
+			
+		} 
+		catch(NoSuchAlgorithmException | InvalidKeyException | IllegalBlockSizeException | NoSuchPaddingException | BadPaddingException e){
+			System.err.println("Error encrypting filename : " + e);
+		}
+
+		return null;
+		
 	}
 	
 	public int getReplicationDeg(){
@@ -118,7 +162,10 @@ public class ServerFile{
 	}
 	
 	public String toMsg(){
-		return this.id+" "+this.pathName+" "+this.creationDate.toMillis()+" "+this.initPeerId;
+
+		File file = new File(this.pathName);
+
+		return this.encryptedId + " " + this.id+" "+this.pathName+" "+this.lastModified+" "+this.initPeerId;
 	}
 	
 	public String toString(){

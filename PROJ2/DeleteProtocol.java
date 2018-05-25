@@ -10,22 +10,37 @@ import java.util.concurrent.TimeUnit;
 import java.security.InvalidKeyException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
+import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
 
 public class DeleteProtocol implements Runnable {
 	
 	private Server server;
 	private String fileName;
 	private String fileId;
+	private String fileEncryptedId;
+
+	private SecretKeySpec secretKey;
 	
-	public DeleteProtocol(Server server, String fileName){
+	public DeleteProtocol(Server server, String fileName, SecretKeySpec clientKey){
 		this.server = server;
 		this.fileName = fileName;
 		this.fileId = ServerFile.toId(fileName);
+		this.fileEncryptedId = ServerFile.toEncryptedId(fileName, secretKey);
+		this.secretKey = clientKey;
 	}
 	
 	@Override
 	public void run (){
-		this.server.getFileManager().removeAllChunks(this.fileId);
+
+		String encodedKey = Base64.getEncoder().encodeToString(this.secretKey.getEncoded());
+
+		this.server.getFileManager().removeAllChunks(this.fileId, encodedKey);
 		int n = 3;
 		while(n > 0){
 			this.sendDeleteMsg();
@@ -68,7 +83,11 @@ public class DeleteProtocol implements Runnable {
 	}
 	
 	private String getDeleteMsg(){
-		return "DELETE "+this.server.getVersion()+" "+this.server.getId()+" "+this.fileId;
+
+		String secretKeyBase = Base64.getEncoder().encodeToString(this.secretKey.getEncoded());
+
+		return "DELETE "+this.server.getVersion()+" "+this.server.getId()+" "
+			+secretKeyBase + " " + this.fileId;
 	}
 	
 	private void printErrMsg(String err){
