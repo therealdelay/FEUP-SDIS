@@ -50,9 +50,11 @@ public class Server implements ServerInterf {
 
 	private final static String keyString = "d1nnyomelhorfeiticeirodehogw4rts";
 	private static byte[] key;
+	private static SecretKeySpec adminKey;
+
 	
 	public static void main(String[] args){
-		if(args.length != 5){
+		if(args.length != 6){
 			Server.printUsage();
 			return;
 		}
@@ -85,26 +87,39 @@ public class Server implements ServerInterf {
 		
 		this.version = args[0];
 		this.id = Integer.parseInt(args[1]);
-		
+
+		// this.adminKey = args[2];
+
+		try {
+			MessageDigest sha = MessageDigest.getInstance("SHA-1");
+			byte[] key = sha.digest(args[2].getBytes("UTF-8"));
+			key = Arrays.copyOf(key, 16);
+
+			this.adminKey = new SecretKeySpec(key, "AES");
+			
+
+		} catch(NoSuchAlgorithmException | UnsupportedEncodingException e){
+			System.err.println("Error creating client key");
+		}
 		//Connect to RMI
 		this.connectRMI();
 		
 		try{
 			//Connect MCsocket
-			this.MCsocket = new TwinMulticastSocket(args[2], key);
+			this.MCsocket = new TwinMulticastSocket(args[3], key);
 	
 			//Connect MDBsocket
-			this.MDBsocket = new TwinMulticastSocket(args[3], key);
+			this.MDBsocket = new TwinMulticastSocket(args[4], key);
 		
 			//Connect MDRsocket
-			this.MDRsocket = new TwinMulticastSocket(args[4], key);
+			this.MDRsocket = new TwinMulticastSocket(args[5], key);
 		}
 		catch(IOException | NoSuchAlgorithmException | NoSuchPaddingException e){
 			System.err.println("Error setting up multicast sockets");
 			this.disconnect();
 			System.exit(1);
 		}
-		
+
 		this.fileManager = new FileManager(this.id);
 		this.requests = new ConcurrentHashMap<String,Runnable>();
 		this.restoreThreads = new ConcurrentHashMap<String,Runnable>();
@@ -227,9 +242,19 @@ public class Server implements ServerInterf {
 		this.pool.execute(new DeleteProtocol(this, fileName, clientKey));
 	}
 	
-	public void reclaim(SecretKeySpec clientKey, int mem) throws NoSuchPaddingException, NoSuchAlgorithmException{
-		this.printRequest("RECLAIM "+mem);
-		this.pool.execute(new ReclaimProtocol(this, mem, clientKey));
+	public String reclaim(SecretKeySpec clientKey, int mem) throws NoSuchPaddingException, NoSuchAlgorithmException{
+		String sA = new String(this.adminKey.getEncoded());
+		String sB = new String(clientKey.getEncoded());
+		String answer = "";
+		if(!sA.equals(sB)){
+			answer = "Authentication failed!";
+		}
+		else{
+			this.printRequest("RECLAIM "+mem);
+			this.pool.execute(new ReclaimProtocol(this, mem, clientKey));
+			answer = "Reclaim processed.";
+		}
+		return answer;
 	}
 	
 	public String state(){
