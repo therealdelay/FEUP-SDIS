@@ -140,6 +140,7 @@ public class ControlProtocol implements Runnable {
 		System.arraycopy(buf,0,cleanBuf,0,read);
 		
 		int delay = this.getRandomTime();
+		System.out.println("\nSleeping with delay " + delay + "\n");
 		try{
 			TimeUnit.MILLISECONDS.sleep(delay);
 		}
@@ -147,9 +148,12 @@ public class ControlProtocol implements Runnable {
 			System.out.println(e);
 		}
 
+		System.out.println("RestoreThreads " + this.server.restoreThreads);
+
 		if(!this.server.restoreThreads.containsKey("CHUNK"+this.fileId+"_"+this.chunkNr)){
 			this.sendChunkMsg(cleanBuf);
 		}
+		
 		this.server.restoreThreads.clear();
 	}
 
@@ -173,9 +177,9 @@ public class ControlProtocol implements Runnable {
 			this.server.backupChunk(this.fileId,Integer.parseInt(this.chunkNr));
 		}
 	}
-	
 
 	private void sendChunkMsg(byte[] buf){
+		System.out.println("Sending chunk.");
 		byte[] msg = this.getChunkMsg(buf);
 		TwinMulticastSocket socket = this.server.getMDRsocket();
 		DatagramPacket packet = new DatagramPacket(msg, msg.length, socket.getGroup(), socket.getPort());

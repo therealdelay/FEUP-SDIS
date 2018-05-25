@@ -157,7 +157,6 @@ public class BackUpProtocol implements Runnable {
 		boolean done = false;
 		
 		for(int i = 0; i < BackUpProtocol.MAX_TRIES; i++){
-			System.out.println(this.getPutChunkHeader());
 			byte[] msg = this.getPutChunkMsg(buf);
 			TwinMulticastSocket socket = this.server.getMDBsocket();
 			DatagramPacket packet = new DatagramPacket(msg, msg.length, socket.getGroup(), socket.getPort());
