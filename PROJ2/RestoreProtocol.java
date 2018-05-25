@@ -144,6 +144,7 @@ public class RestoreProtocol implements Runnable {
 	}
 	
 	public void chunk(int chunk, byte[] buf){
+		System.out.println("RECEBI chunk " + chunk);
 		try{
 			this.lock.lock();
 			if(chunk == this.currChunk && this.received == false){

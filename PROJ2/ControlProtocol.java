@@ -25,6 +25,7 @@ public class ControlProtocol implements Runnable {
 	private boolean sendChunk;
 	
 	private boolean receivedPutChunk = false;
+	private boolean receivedChunk = false;
 	
 	public ControlProtocol(Server server, byte[] buf){
 		this.server = server;
@@ -128,9 +129,12 @@ public class ControlProtocol implements Runnable {
 			return;
 		}
 		
+		
+		
 		String fileName = chunkId+".chunk";
 		FileInputStream inStream = fileManager.getInStream(fileName);
-
+		
+		
 		//Read
 		byte[] buf = new byte[Server.MAX_CHUNK_SIZE];
 		int read;
@@ -142,15 +146,29 @@ public class ControlProtocol implements Runnable {
 			this.printErrMsg("Unable to read chunk "+this.chunkNr+" of file "+this.fileId);
 			return;
 		}
-
+		
 		byte[] cleanBuf = new byte[read];
 		System.arraycopy(buf,0,cleanBuf,0,read);
 		
+		String handlerId = "GETCHUNK"+this.fileId+"_"+this.chunkNr;
+		this.server.restoreThreads.put(handlerId, this);
+
 		this.sleepRandom();
 
-		System.out.println("RestoreThreads " + this.server.restoreThreads);
-
-		if(!this.server.restoreThreads.containsKey("CHUNK"+this.fileId+"_"+this.chunkNr)){
+		/*
+		//System.out.println("Processing Removed...");
+		if(this.server.getFileManager().decFileChunkRepDeg(this.fileId, Integer.parseInt(this.chunkNr), Integer.parseInt(this.senderId))){
+			System.out.println("Starting removed treatment");
+			this.sleepRandom();
+			System.out.println("Replication degree below required on chunk nr "+this.chunkNr+" of file "+this.fileId);
+			//System.out.println("Starting chunk back up");
+			if(!this.receivedPutChunk)
+				this.server.backupChunk(this.fileId,Integer.parseInt(this.chunkNr));
+			
+			this.server.removedThreads.remove(handlerId);
+		}
+		*/
+		if(!this.receivedChunk){
 			this.sendChunkMsg(cleanBuf);
 		}
 		
@@ -236,5 +254,10 @@ public class ControlProtocol implements Runnable {
 	public void notifyPutChunk(String fileId, String chunkNr){
 		if(this.fileId.compareTo(fileId)==0 && this.chunkNr.compareTo(chunkNr) == 0);
 			this.receivedPutChunk = true;
+	}
+
+	public void notifyGetChunk(String fileId, String chunkNr) {
+		if(this.fileId.compareTo(fileId)==0 && this.chunkNr.compareTo(chunkNr) == 0);
+			this.receivedChunk = true;
 	}
 }

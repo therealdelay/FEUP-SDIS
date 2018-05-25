@@ -257,6 +257,10 @@ public class Server implements ServerInterf {
 	public ConcurrentHashMap<String,Runnable> getRequests(){
 		return this.requests;
 	}
+
+	public ConcurrentHashMap<String,Runnable> getRestoreThreads(){
+		return this.restoreThreads;
+	}
 	
 	public TwinMulticastSocket getMCsocket(){
 		return this.MCsocket;
