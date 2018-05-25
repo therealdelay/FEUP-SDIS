@@ -209,7 +209,21 @@ public class TestApp {
 		}
 		System.out.println("Reclaim processed.");
 	}
-	
+
+	private void list(){
+
+		this.connect();
+		
+		System.out.println("Retrieving user files");
+		try{
+			String list = this.proxy.list(clientKey);
+			System.out.println(list);
+		}
+		catch(Exception e){
+			System.err.println("Failed to list");
+		}
+	}
+
 	private void state(){
 		this.connect();
 		
@@ -244,6 +258,10 @@ public class TestApp {
 				
 			case "RECLAIM":
 				this.reclaim();
+				break;
+
+			case "LIST":
+				this.list();
 				break;
 				
 			case "STATE":

@@ -234,6 +234,41 @@ public class Server implements ServerInterf {
 		this.pool.execute(new ReclaimProtocol(this, mem, clientKey));
 	}
 	
+	private String listFiles(SecretKeySpec clientKey, ArrayList<ServerFile> files){
+
+		ArrayList<ServerFile> userFiles = new ArrayList<ServerFile>();
+		for(ServerFile file : files){
+			if(file.testKey(clientKey))
+				userFiles.add(file);
+		}
+
+		Collections.sort(userFiles);
+
+		String newLine = System.lineSeparator();
+
+		String list = "-------------------------------------------------------------------"+newLine+
+					  "                               Files                               "+newLine+newLine;
+
+
+		if(userFiles.size() == 0){
+			list +="                           Empty                               "+newLine+newLine;
+		}
+		else{
+			for(ServerFile file : userFiles)
+				list += file.toList()+newLine;
+		}
+
+		list += "-------------------------------------------------------------------";
+
+		return list;
+	}
+
+	public String list(SecretKeySpec clientKey){
+		this.printRequest("LIST");
+		ArrayList<ServerFile> files = this.fileManager.getFiles();
+		return this.listFiles(clientKey,files);
+	}
+
 	public String state(){
 		this.printRequest("STATE");
 		return this.fileManager.toString();

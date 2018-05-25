@@ -21,7 +21,7 @@ import javax.crypto.BadPaddingException;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
-public class ServerFile{
+public class ServerFile implements Comparable<ServerFile>{
 	private String id;
 	private String encryptedId;
 	private String pathName;
@@ -52,6 +52,19 @@ public class ServerFile{
 		this.initPeerId = peerId;
 		this.chunksRepDeg = new ArrayList<ArrayList<Integer>>();
 	}
+
+
+	public ServerFile(ServerFile file){
+		this.id = file.getId();
+		this.encryptedId = file.getEncryptedId(); 
+		this.pathName = file.getPathName();
+		this.lastModified = file.getLastModifiedDate();
+		//this.readCreationDate();
+		this.replicationDeg = file.getReplicationDeg();
+		this.initPeerId = file.getInitPeerId();
+		this.chunksRepDeg =  new ArrayList<ArrayList<Integer>>();
+	}
+
 	/*
 	public void readCreationDate(){
 		Path file = Paths.get(this.pathName);
@@ -76,6 +89,14 @@ public class ServerFile{
 
 	public String getEncryptedId() {
 		return this.encryptedId;
+	}
+
+	public long getLastModifiedDate() {
+		return this.lastModified;
+	}
+
+	public String getLastModifiedDateStr() {
+		return FileTime.fromMillis(this.lastModified).toString();
 	}
 	
 	public static String toRelativeName(String fileName){
@@ -130,6 +151,22 @@ public class ServerFile{
 		return null;
 		
 	}
+
+	public boolean testKey(SecretKeySpec secretKey){
+
+		try {
+			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+			cipher.init(Cipher.DECRYPT_MODE, secretKey);
+			cipher.doFinal(this.encryptedId.getBytes());
+			return true;
+			
+		}
+		catch(NoSuchAlgorithmException | InvalidKeyException | IllegalBlockSizeException | NoSuchPaddingException | BadPaddingException e){
+			System.err.println("Error decrypting file "+this.pathName);
+		}
+
+		return false;
+	}
 	
 	public int getReplicationDeg(){
 		return this.replicationDeg;
@@ -157,7 +194,7 @@ public class ServerFile{
 			return false;
 		
 		ArrayList<Integer> peers = this.chunksRepDeg.get(chunkNr);
-		peers.remove(new Integer(peerId));
+		peers.remove(Integer.valueOf(peerId));
 		return peers.size() < this.replicationDeg;
 	}
 	
@@ -168,6 +205,16 @@ public class ServerFile{
 		return this.encryptedId + " " + this.id+" "+this.pathName+" "+this.lastModified+" "+this.initPeerId;
 	}
 	
+
+	public String toList(){
+		String lineSep = System.lineSeparator();
+		return  "	Name: "+ServerFile.toRelativeName(this.pathName)+lineSep+
+				"	Path: "+this.pathName+lineSep+
+				"	Last Modified: "+this.getLastModifiedDateStr();
+				
+	}
+
+  	@Override
 	public String toString(){
 		String lineSep = System.lineSeparator();
 		return  "	PathName: "+this.pathName+lineSep+
@@ -176,4 +223,19 @@ public class ServerFile{
 				"	Expected replication degree: "+this.replicationDeg+lineSep+
 				"	Current chunks replication degree: "+ this.chunksRepDeg.stream().map(peers -> Integer.toString(peers.size())).collect(Collectors.joining(", "));
 	}
+
+	@Override
+  	public int compareTo(ServerFile file) {
+  		String relativeName = ServerFile.toRelativeName(this.pathName);
+  		String compRelativeName = ServerFile.toRelativeName(file.getPathName());
+   	 	int comp = relativeName.compareTo(compRelativeName);
+   	 	if(comp == 0){
+   	 		comp = this.pathName.compareTo(file.getPathName());
+   	 		if(comp == 0){
+   	 			comp = Long.compare(this.lastModified, file.getLastModifiedDate());
+   	 		}
+   	 	}
+   	 	
+   	 	return comp;
+  	}
 }

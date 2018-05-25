@@ -4,6 +4,7 @@ import java.net.*;
 import java.lang.*;
 import java.util.*;
 import java.util.stream.*;
+import static java.util.stream.Collectors.*;
 
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.NoSuchPaddingException;
@@ -113,7 +114,10 @@ public class FileManager{
 		}
 		return null;
 	}
-	
+
+	public synchronized ArrayList<ServerFile> getFiles(){
+			return this.files.stream().map(ServerFile::new).collect(toCollection(ArrayList::new));
+	}
 	
 	public synchronized String getFilePath(String fileId){
 		ServerFile file;
@@ -353,7 +357,7 @@ public class FileManager{
 	public synchronized long getUsedMem(){
 		return this.usedMem;
 	}
-	
+
 	public synchronized String toString(){
 		String lineSep = System.lineSeparator();
 		String doubleLineSep = lineSep+lineSep;

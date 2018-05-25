@@ -53,7 +53,7 @@ public class ServerChunk{
 	}
 		
 	public boolean decRepDeg(int peerId){
-		this.peers.remove(new Integer(peerId));
+		this.peers.remove(Integer.valueOf(peerId));
 		if(this.repDeg != -1)
 			return this.peers.size() < this.repDeg;
 		else
