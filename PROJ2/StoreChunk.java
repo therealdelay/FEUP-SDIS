@@ -58,9 +58,8 @@ public class StoreChunk implements Runnable {
 			return;
 		}
 		
-		this.sendStoredMsg();
-		
 		if(fileManager.canSaveChunk(chunkId)){
+			System.out.println("StoreChunk: Saving chunk");
 			this.saveChunk(chunkId);
 			this.sendStoredMsg();
 		}
