@@ -198,16 +198,17 @@ public class TestApp {
 			return;
 		
 		this.connect();
+		String answer = "";
 		
 		int mem = 8*1024 - Integer.parseInt(this.args[0]);
 		System.out.println("Reclaiming " + mem + "KBytes of disk space.");
 		try{
-			this.proxy.reclaim(clientKey, Integer.parseInt(this.args[0]));
+			answer = this.proxy.reclaim(clientKey, Integer.parseInt(this.args[0]));
 		}
 		catch(Exception e){
 			System.err.println("Failed to reclaim");
 		}
-		System.out.println("Reclaim processed.");
+		System.out.println(answer);
 	}
 
 	private void list(){
