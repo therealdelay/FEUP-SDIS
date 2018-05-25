@@ -80,10 +80,10 @@ public class TwinMulticastSocket {
 	}
 	
 	public void send(DatagramPacket packet) throws IOException,InvalidKeyException,BadPaddingException,IllegalBlockSizeException
-	{
-		
+	{	
+
 		packet.setData(encryptPacket(packet.getData()));
-		
+
 		try{
 			this.lock.lock();
 			this.out.setTimeToLive(1);

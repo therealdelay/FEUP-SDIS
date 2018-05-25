@@ -5,6 +5,8 @@ import java.io.*;
 import java.net.*;
 import java.util.Arrays;
 
+import javax.crypto.spec.SecretKeySpec;
+
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -16,7 +18,7 @@ public class TestApp {
 	private String[] args;
 	private ServerInterf proxy;
 
-	private static byte[] clientKey;
+	private static SecretKeySpec clientKey;
 	
 	private final static int BUF_SIZE = 1024 * 64;
 
@@ -38,8 +40,11 @@ public class TestApp {
 		
 		try {
 			MessageDigest sha = MessageDigest.getInstance("SHA-1");
-			clientKey = sha.digest(args[1].getBytes("UTF-8"));
-			clientKey = Arrays.copyOf(clientKey, 16);
+			byte[] key = sha.digest(args[1].getBytes("UTF-8"));
+			key = Arrays.copyOf(key, 16);
+
+			clientKey = new SecretKeySpec(key, "AES");
+			
 
 		} catch(NoSuchAlgorithmException | UnsupportedEncodingException e){
 			System.err.println("Error creating client key");

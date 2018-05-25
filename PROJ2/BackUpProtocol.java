@@ -36,7 +36,7 @@ public class BackUpProtocol implements Runnable {
 	
 	private FileInputStream inStream = null;
 	
-	public BackUpProtocol(Server server, String fileName, int replicationDeg, byte[] clientKey) throws IOException, UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchPaddingException
+	public BackUpProtocol(Server server, String fileName, int replicationDeg, SecretKeySpec clientKey) throws IOException, UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchPaddingException
 	{
 		this.server = server;
 		this.fileName = fileName;
@@ -45,7 +45,7 @@ public class BackUpProtocol implements Runnable {
 		this.lock = new ReentrantLock();
 		this.chunkPeers = new ArrayList<ArrayList<Integer>>();
 
-		this.secretKey = new SecretKeySpec(clientKey, "AES");
+		this.secretKey = clientKey;
 		this.cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 	}
 	
@@ -91,8 +91,6 @@ public class BackUpProtocol implements Runnable {
 
 				byte[] encryptedBody = encryptBody(body);
 
-				System.out.println("BEFORE ENCRYP: " + body.length + " : AFTER : " + encryptedBody.length);
-
 				if(!this.backUpChunk(encryptedBody)){
 					this.exit_err("Unable to reach required replication degree in chunk "+this.currChunk);
 					return;
@@ -128,11 +126,11 @@ public class BackUpProtocol implements Runnable {
 			return false;
 		}
 		
-		this.serverFile = new ServerFile(this.fileName, this.replicationDeg);
+		this.serverFile = new ServerFile(this.fileName, this.replicationDeg, file.lastModified(), this.secretKey);
 		
 		//Get file id
 		
-		this.fileId = serverFile.getId();
+		this.fileId = this.serverFile.getId();
 		
 		FileManager fileManager = this.server.getFileManager();
 		

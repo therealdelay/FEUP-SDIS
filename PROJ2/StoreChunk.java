@@ -9,6 +9,8 @@ import java.util.concurrent.locks.*;
 import java.security.InvalidKeyException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
+import java.util.Base64;
+
 
 public class StoreChunk implements Runnable {
 	
@@ -20,6 +22,7 @@ public class StoreChunk implements Runnable {
 	private String senderId;
 	private ServerFile file;
 	private String fileId;
+	private String encryptedFileId;
 	private String chunkNr;
 	private String repDeg;
 	
@@ -58,22 +61,22 @@ public class StoreChunk implements Runnable {
 		
 		//Parse header elements
 		String[] header = parts[0].split(" ");
-		System.out.println(Arrays.toString(header));
+		System.out.println("\n" + Arrays.toString(header) + "\n");
 		this.version = header[1];
 		this.senderId = header[2];
-		this.fileId = header[3];
+		this.encryptedFileId = header[3];
+		this.fileId = header[4];
 		
-		int i = 4;
+		int i = 5;
 		String pathName = header[i++];
 		for(;i<header.length-3;i++)
 			pathName += " "+header[i];
 				
-		String creationDate = header[i++];
-		System.out.println(creationDate);
+		String lastModified = header[i++];
 		this.chunkNr = header[i++];
 		this.repDeg = header[i].trim();
 		
-		this.file = new ServerFile(this.fileId,pathName,Long.parseLong(creationDate),Integer.parseInt(this.repDeg));
+		this.file = new ServerFile(this.fileId, encryptedFileId, pathName,Long.parseLong(lastModified),Integer.parseInt(this.repDeg));
 		
 		//Copy actual body
 		int headerLength = parts[0].length()+2;
@@ -138,6 +141,6 @@ public class StoreChunk implements Runnable {
 	}
 	
 	private String getStoredMsg(){
-		return "STORED "+this.version+" "+this.server.getId()+" "+this.fileId+" "+this.chunkNr;
+		return "STORED "+this.version+" "+this.server.getId()+" " + this.encryptedFileId + " "+this.fileId+" "+this.chunkNr;
 	}
 }

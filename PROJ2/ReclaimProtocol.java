@@ -13,6 +13,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 public class ReclaimProtocol implements Runnable {
@@ -24,9 +25,10 @@ public class ReclaimProtocol implements Runnable {
 	private SecretKeySpec secretKey;
 	private Cipher cipher;
 	
-	public ReclaimProtocol(Server server, int size, byte[] clientKey){
+	public ReclaimProtocol(Server server, int size, SecretKeySpec clientKey){
 		this.server = server;
 		this.size = size;
+		this.secretKey = clientKey;
 	}
 	
 	@Override

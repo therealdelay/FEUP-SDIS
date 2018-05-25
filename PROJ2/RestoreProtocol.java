@@ -32,13 +32,13 @@ public class RestoreProtocol implements Runnable {
 	
 	private FileOutputStream outStream;
 	
-	public RestoreProtocol(Server server, String fileName, String fileId, byte[] clientKey) throws IOException, UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchPaddingException{
+	public RestoreProtocol(Server server, String fileName, String fileId, SecretKeySpec clientKey) throws IOException, UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchPaddingException{
 		this.server = server;
 		this.fileName = fileName;
 		this.fileId = fileId;
 		this.lock = new ReentrantLock();
 
-		this.secretKey = new SecretKeySpec(clientKey, "AES");
+		this.secretKey = clientKey;
 		this.cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 	}
 	
@@ -116,7 +116,7 @@ public class RestoreProtocol implements Runnable {
 	}
 	
 	private String getGetChunkMsg(){
-		return "GETCHUNK "+this.server.getVersion()+" "+this.server.getId()+" "+this.fileId+" "+this.currChunk;
+		return "GETCHUNK "+this.server.getVersion()+" "+this.server.getId()+" "+ ServerFile.toEncryptedId(this.fileName, this.secretKey)+" "+this.fileId+" "+this.currChunk;
 	}
 	
 	private void removeRequest(){

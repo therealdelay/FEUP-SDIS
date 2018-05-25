@@ -14,6 +14,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 public class DeleteProtocol implements Runnable {
@@ -21,11 +22,16 @@ public class DeleteProtocol implements Runnable {
 	private Server server;
 	private String fileName;
 	private String fileId;
+	private String fileEncryptedId;
+
+	private SecretKeySpec secretKey;
 	
-	public DeleteProtocol(Server server, String fileName, byte[] clientKey){
+	public DeleteProtocol(Server server, String fileName, SecretKeySpec clientKey){
 		this.server = server;
 		this.fileName = fileName;
 		this.fileId = ServerFile.toId(fileName);
+		this.fileEncryptedId = ServerFile.toEncryptedId(fileName, secretKey);
+		this.secretKey = clientKey;
 	}
 	
 	@Override
@@ -73,7 +79,8 @@ public class DeleteProtocol implements Runnable {
 	}
 	
 	private String getDeleteMsg(){
-		return "DELETE "+this.server.getVersion()+" "+this.server.getId()+" "+this.fileId;
+		return "DELETE "+this.server.getVersion()+" "+this.server.getId()+" "
+			+this.fileEncryptedId + " " + this.fileId;
 	}
 	
 	private void printErrMsg(String err){

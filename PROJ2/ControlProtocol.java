@@ -20,6 +20,7 @@ public class ControlProtocol implements Runnable {
 	private String version;
 	private String senderId;
 	private String fileId;
+	private String fileEncryptedId;
 	private String chunkNr;
 	private boolean sendChunk;
 	
@@ -46,9 +47,11 @@ public class ControlProtocol implements Runnable {
 		this.msgType = header[0];
 		this.version = header[1];
 		this.senderId = header[2];
-		this.fileId = header[3];
-		if(header.length > 4)
-			this.chunkNr = header[4];
+		this.fileEncryptedId = header[3];
+		this.fileId = header[4];
+
+		if(header.length > 5)
+			this.chunkNr = header[5];
 			
 		if(this.senderId.compareTo(""+this.server.getId()) == 0){
 			return true;

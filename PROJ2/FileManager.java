@@ -157,7 +157,7 @@ public class FileManager{
 		return chunksToRemove;
 	}
 	
-	public void removeAllChunks(String fileId){
+	public void removeAllChunks(String fileId){ // TODO: delete if authorized!
 		
 		//Delete file if exists
 		synchronized(this.files){
@@ -271,7 +271,9 @@ public class FileManager{
 			outFile.createNewFile();
 			outStream = new FileOutputStream(outFile);
 		}
-		catch(IOException e){}
+		catch(IOException e){
+			System.err.println("Error creating file to save chunk : " + e);
+		}
 		
 		return outStream;
 	}
