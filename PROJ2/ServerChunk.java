@@ -13,9 +13,9 @@ public class ServerChunk{
 	public ServerChunk(String id){
 		this.id = id;
 		
-		String[] parts = this.id.split("\\.")[0].split("_");
-		this.fileId = fileId;
-		this.chunkNr = chunkNr;
+		String[] parts = this.id.split("_");
+		this.fileId = parts[0];
+		this.chunkNr = Integer.parseInt(parts[1]);
 		this.size = size;
 		this.peers = new ArrayList<Integer>();
 		this.onDisk = false;
@@ -24,7 +24,7 @@ public class ServerChunk{
 	public ServerChunk(String id, long size, int repDeg){
 		this.id  = id;
 
-		String[] parts = this.id.split("\\.")[0].split("_");
+		String[] parts = this.id.split("_");
 		this.fileId = parts[0];
 		this.chunkNr = Integer.parseInt(parts[1]);
 		
@@ -113,6 +113,8 @@ public class ServerChunk{
 		String repDegStr = this.repDeg == -1 ? "-" : ""+this.repDeg;
 		
 		return "	ID: "+this.id+newLine+
+			   "	FileID: "+this.fileId+newLine+
+			   "	Number: "+this.chunkNr+newLine+
 			   "	Size: "+this.size+newLine+
 			   "	RepDeg: "+repDegStr+newLine+
 			   "	Perceived RepDeg: "+this.getPerceivedRepDeg()+newLine+
