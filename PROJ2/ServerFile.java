@@ -140,13 +140,13 @@ public class ServerFile implements Comparable<ServerFile>{
 		try {
 			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 			cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-	
+			
 			byte[] tmp = Base64.getEncoder().encode(cipher.doFinal(path.getBytes()));
 			return new String(tmp);
 			
 		} 
 		catch(NoSuchAlgorithmException | InvalidKeyException | IllegalBlockSizeException | NoSuchPaddingException | BadPaddingException e){
-			System.err.println("Error encrypting filename : " + e);
+			System.err.println("Error encrypting filename 22 : " + e);
 		}
 
 		return null;

@@ -31,7 +31,7 @@ public class DeleteProtocol implements Runnable {
 		this.server = server;
 		this.fileName = fileName;
 		this.fileId = ServerFile.toId(fileName);
-		this.fileEncryptedId = ServerFile.toEncryptedId(fileName, secretKey);
+		this.fileEncryptedId = ServerFile.toEncryptedId(fileName, clientKey);
 		this.secretKey = clientKey;
 	}
 	
