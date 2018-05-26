@@ -19,6 +19,7 @@ public class ControlProtocol implements Runnable {
 	private String msgType;
 	private String version;
 	private String senderId;
+	private String blockNr;
 	private String fileId;
 	private String fileEncryptedId;
 	private String chunkNr;
@@ -55,19 +56,25 @@ public class ControlProtocol implements Runnable {
 		this.msgType = header[0];
 		this.version = header[1];
 		this.senderId = header[2];
-		this.fileEncryptedId = header[3];
-		this.fileId = header[4];
 
-		System.out.println("HEADER IS " + Arrays.toString(header));
-		if(header.length > 5){
-			this.chunkNr = header[5];
-			if(header.length > 6)
-				this.repDeg = header[6];
-			if (header.length > 7) {
+		if(header.length > 4){
+			this.fileEncryptedId = header[3];
+			this.fileId = header[4];
+
+			if(header.length > 5){
+				this.chunkNr = header[5];
+				if(header.length > 6)
+					this.repDeg = header[6];
+			}
+  		if (header.length > 7) {
 				this.addressToSend = header[6];
 				this.portToSend = Integer.parseInt(header[7]);
 			}
 		}
+		else
+			this.blockNr = header[3].trim();
+
+		System.out.println("ControlProtocol: blockNr "+ this.blockNr);
 		
 		if(this.senderId.compareTo(""+this.server.getId()) == 0){
 			return true;
@@ -92,6 +99,10 @@ public class ControlProtocol implements Runnable {
 				
 			case "REMOVED":
 				this.processRemoved();
+				break;
+
+			case "GETMETA":
+				this.processGetMeta();
 				break;
 				
 			default:
@@ -211,6 +222,38 @@ public class ControlProtocol implements Runnable {
      	return n;
 	}
 	
+	private void sendChunkMsg(byte[] buf){
+		byte[] msg = this.getChunkMsg(buf);
+		TwinMulticastSocket socket = this.server.getMDRsocket();
+		DatagramPacket packet = new DatagramPacket(msg, msg.length, socket.getGroup(), socket.getPort());
+		
+		//Send msg
+		try{
+			socket.send(packet);
+		}
+		catch(IOException e){
+			this.printErrMsg("Unable to send CHUNK message");
+		}
+		catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+			System.err.println("MCsocket packet received is insecure");
+		}
+
+		this.server.restoreThreads.put("CHUNK"+this.fileId+"_"+this.chunkNr, this);
+	}
+	
+	
+	private String getChunkHeader(){
+		return "CHUNK "+this.version+" "+this.server.getId()+" "+this.fileId+" "+this.chunkNr;
+	}
+	
+	private byte[] getChunkMsg(byte[] body){
+		byte[] header = (this.getChunkHeader()+"\r\n").getBytes();
+		byte[] msg = new byte[header.length+body.length];
+		System.arraycopy(header,0,msg,0,header.length);
+		System.arraycopy(body,0,msg,header.length,body.length);
+		return msg;
+	}
+	
 	private void processDelete(){
 		System.out.println("Processing Delete...");
 		this.server.getFileManager().removeAllChunks(this.fileId, this.fileEncryptedId); //fileEncrypted is the secretKey
@@ -235,8 +278,25 @@ public class ControlProtocol implements Runnable {
 		}
 	}
 
-	private void sendChunkMsg(byte[] buf){
-		byte[] msg = this.getChunkMsg(buf);
+	private void processGetMeta(){
+		System.out.println("TEST");
+		int blockNr = Integer.parseInt(this.blockNr);
+		String meta = this.server.getFileManager().getMetaBlock(blockNr);
+		System.out.println("ControlProtocol: Block "+meta);
+		this.sendMetaMsg(meta);
+	}
+
+	private String getMetaHeader(){
+		return "META "+this.version+" "+this.server.getId()+" "+this.blockNr;
+	}
+	
+	private byte[] getMetaMsg(String data){
+		String msg = this.getMetaHeader()+"\r\n"+data;
+		return msg.getBytes();
+	}
+
+	private void sendMetaMsg(String data){
+		byte[] msg = this.getMetaMsg(data);
 		TwinMulticastSocket socket = this.server.getMDRsocket();
 		DatagramPacket packet = new DatagramPacket(msg, msg.length, socket.getGroup(), socket.getPort());
 		
@@ -245,13 +305,11 @@ public class ControlProtocol implements Runnable {
 			socket.send(packet);
 		}
 		catch(IOException e){
-			this.printErrMsg("Unable to send CHUNK message");
+			this.printErrMsg("Unable to send META message");
 		}
 		catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
 			System.err.println("MCsocket packet received is insecure");
 		}
-
-		this.server.restoreThreads.put("CHUNK"+this.fileId+"_"+this.chunkNr, this);
 	}
 	
 	private String getChunkHeader(){
@@ -274,6 +332,12 @@ public class ControlProtocol implements Runnable {
 	
 	private void printErrMsg(String err){
 		System.err.println("Error in Control Protocol: "+err);
+	}
+
+	private int getRandomTime(){
+		Random r = new Random();
+   		int n = r.nextInt(400);
+     	return n;
 	}
 	
 	private void sleepRandom(){

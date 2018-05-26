@@ -39,6 +39,19 @@ public class FileManager{
 		System.out.println(this.toString());
 		return true;
 	}
+
+
+	public boolean addChunk(ServerChunk newChunk){
+		
+		if(this.containsChunk(newChunk.getId()))
+			return false;
+
+		synchronized(this.chunks){
+			this.chunks.add(newChunk);
+		}
+		System.out.println(this.toString());
+		return true;
+	}
 	
 	public synchronized void addChunk(String chunkId, String fileEncryptedId, int size, int repDeg, int peerId){
 		this.usedMem += size;
@@ -359,6 +372,58 @@ public class FileManager{
 	
 	public synchronized long getUsedMem(){
 		return this.usedMem;
+	}
+
+	public String getMetaBlock(int blockNr){
+		int currBlock = 0;
+		int filesIndex = 0, chunksIndex = 0;
+		boolean end = false;
+		String block = "";
+		String meta;
+
+		while(currBlock <= blockNr){
+
+			while(block.length() < Server.MAX_CHUNK_SIZE){
+
+				if(filesIndex < this.files.size()){
+					meta = this.files.get(filesIndex).toMeta();
+				}
+				else if(chunksIndex < this.chunks.size()){
+					meta = this.chunks.get(chunksIndex).toMeta();
+				}
+				else{
+					end = true;
+					break;
+				}
+
+				if(block.length()+meta.length() > Server.MAX_CHUNK_SIZE){
+					block = "";
+					break;
+				}
+				else{
+					if(block.compareTo("") == 0)
+						block = meta;
+					else
+						block += "|"+meta;
+
+					if(filesIndex < this.files.size())
+						filesIndex++;
+					else
+						chunksIndex++;
+				}
+			}
+			currBlock++;
+
+			if(end)
+				break;
+		}
+
+		currBlock--;
+
+		if(currBlock == blockNr)
+			return block;
+		else
+			return "";
 	}
 
 	public synchronized String toString(){
