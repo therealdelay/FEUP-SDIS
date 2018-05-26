@@ -30,14 +30,31 @@ public class FileManager{
 	}
 	
 	public boolean addFile(ServerFile newFile){
-		if(this.containsFile(newFile.getId()))
-			return false;
+		if(this.containsFile(newFile.getId())){
+			this.showPreviousVersions(newFile);
+		}
 		
 		synchronized(this.files){
 			this.files.add(newFile);
 		}
 		System.out.println(this.toString());
 		return true;
+	}
+
+	public ArrayList<String> showPreviousVersions(ServerFile newFile){
+		ArrayList<String> versions = new ArrayList<String>();
+		System.out.println("Previous versions of file " + newFile.getPathName());
+		int i = 0;
+		System.out.println("Version | Date");
+		System.out.println("------------------------------");
+		for(ServerFile file : this.files){
+			i++;
+			System.out.printf("%-7d | %-30s", i, newFile.getLastModifiedDateStr());
+			versions.add(newFile.getLastModifiedDateStr());
+			System.out.println();
+		}
+
+		return versions;
 	}
 	
 	public synchronized void addChunk(String chunkId, String fileEncryptedId, int size, int repDeg, int peerId){
@@ -172,7 +189,7 @@ public class FileManager{
 		return chunksToRemove;
 	}
 	
-	public void removeAllChunks(String fileId, String secretKey){ 
+	public void removeAllChunks(String fileId, String secretKey, int version){ 
 		Cipher cipher; 
 		SecretKeySpec key;
 		
@@ -188,11 +205,17 @@ public class FileManager{
 		
 		//Delete file if exists
 		synchronized(this.files){
+			int countVersions = 0;
 			ServerFile serverFile;
 			for(int i = 0; i < this.files.size(); i++){
 				serverFile = this.files.get(i);
-				if(serverFile.getId().compareTo(fileId) == 0){
-					
+				if((serverFile.getId().compareTo(fileId) == 0) && (countVersions < version-1)){
+					if(version != 0){
+						if(countVersions != version-1){
+							countVersions++;
+							continue;
+						}
+					}
 					//delete if user is authorized
 					try {
 						
@@ -202,10 +225,11 @@ public class FileManager{
 
 						//it can decrypt
 						this.files.remove(i);
-						break;
+						System.out.println("Count " + countVersions);
+						// break;
 					}
 					catch(Exception e){
-						System.out.println("The client ins't authorize to delete this file");
+						System.out.println("The client isn't authorize to delete this file");
 					}
 				}
 			}

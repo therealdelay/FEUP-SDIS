@@ -80,11 +80,8 @@ public class BackUpProtocol implements Runnable {
 		this.fileId = serverFile.getId();
 		
 		FileManager fileManager = this.server.getFileManager();
+		fileManager.addFile(serverFile);
 		
-		if(!fileManager.addFile(serverFile)){
-			this.exit_err("File already backed up");
-			return false;
-		}
 		
 		return true;
 	}

@@ -37,9 +37,9 @@ public class ServerChunk{
 		this.onDisk = true;
 	}
 	
-	public static String toId(String fileId, int chunkNr){
- 		String[] parts = fileId.split("\\.");
-		String chunkId = parts[0]+"_"+chunkNr;
+	public static String toId(String fileEncryptedId, int chunkNr){
+ 		// String[] parts = fileEncryptedId.split("\\.");
+		String chunkId = fileEncryptedId+"_"+chunkNr;
 		return chunkId;
 	}
 	
@@ -65,7 +65,7 @@ public class ServerChunk{
 	}
 	
 	public String getId(){
-		return this.id;
+		return this.fileEncryptedId;
 	}
 	
 	public String getFileId(){

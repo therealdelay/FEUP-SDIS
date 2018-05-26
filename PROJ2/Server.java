@@ -42,6 +42,7 @@ public class Server implements ServerInterf {
 	public ConcurrentHashMap<String,Runnable> restoreThreads;
 	public ConcurrentHashMap<String,Runnable> removedThreads;
 	private FileManager fileManager;
+	public int deleteVersion;
 		
 	public final static int MAX_WAIT = 400;
 	public final static int MAX_CHUNK_SIZE = 64000;
@@ -239,9 +240,18 @@ public class Server implements ServerInterf {
 		this.pool.execute(handler);
 	}
 	
-	public void delete(SecretKeySpec clientKey, String fileName) throws NoSuchPaddingException, NoSuchAlgorithmException{
+	public void delete(SecretKeySpec clientKey, String fileName, int version) throws NoSuchPaddingException, NoSuchAlgorithmException{
 		this.printRequest("DELETE "+fileName);
-		this.pool.execute(new DeleteProtocol(this, fileName, clientKey));
+		this.deleteVersion = version;
+		this.pool.execute(new DeleteProtocol(this, fileName, clientKey, version));
+	}
+
+	public ArrayList<String> showVersions(String fileName) throws RemoteException{
+		System.out.println("Antes");
+		ArrayList<String> versions = new ArrayList();
+		versions = this.fileManager.showPreviousVersions(this.fileManager.getFile(ServerFile.toId(fileName)));
+		System.out.println("Depois");
+		return versions;
 	}
 	
 	public String reclaim(SecretKeySpec clientKey, int mem) throws NoSuchPaddingException, NoSuchAlgorithmException{

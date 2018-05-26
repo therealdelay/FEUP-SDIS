@@ -24,15 +24,17 @@ public class DeleteProtocol implements Runnable {
 	private String fileName;
 	private String fileId;
 	private String fileEncryptedId;
+	private int version;
 
 	private SecretKeySpec secretKey;
 	
-	public DeleteProtocol(Server server, String fileName, SecretKeySpec clientKey){
+	public DeleteProtocol(Server server, String fileName, SecretKeySpec clientKey, int version){
 		this.server = server;
 		this.fileName = fileName;
 		this.fileId = ServerFile.toId(fileName);
 		this.fileEncryptedId = ServerFile.toEncryptedId(fileName, secretKey);
 		this.secretKey = clientKey;
+		this.version = version;
 	}
 	
 	@Override
@@ -40,7 +42,7 @@ public class DeleteProtocol implements Runnable {
 
 		String encodedKey = Base64.getEncoder().encodeToString(this.secretKey.getEncoded());
 
-		this.server.getFileManager().removeAllChunks(this.fileId, encodedKey);
+		this.server.getFileManager().removeAllChunks(this.fileId, encodedKey, version);
 		int n = 3;
 		while(n > 0){
 			this.sendDeleteMsg();
