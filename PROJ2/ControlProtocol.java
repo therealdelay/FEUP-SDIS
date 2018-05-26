@@ -200,7 +200,6 @@ public class ControlProtocol implements Runnable {
 	private void sendThroughTCP(byte[] buf, InetAddress address) {
 		try {
 			Socket connectionSocket = new Socket(address, portToSend);
-			System.out.println("Socket Send " + connectionSocket.getPort());
 			
 			DataOutputStream outputStream = new DataOutputStream(connectionSocket.getOutputStream());
 					
@@ -245,14 +244,7 @@ public class ControlProtocol implements Runnable {
 	private String getChunkHeader(){
 		return "CHUNK "+this.version+" "+this.server.getId()+" "+this.fileId+" "+this.chunkNr;
 	}
-	
-	private byte[] getChunkMsg(byte[] body){
-		byte[] header = (this.getChunkHeader()+"\r\n").getBytes();
-		byte[] msg = new byte[header.length+body.length];
-		System.arraycopy(header,0,msg,0,header.length);
-		System.arraycopy(body,0,msg,header.length,body.length);
-		return msg;
-	}
+
 	
 	private void processDelete(){
 		System.out.println("Processing Delete...");
@@ -311,11 +303,7 @@ public class ControlProtocol implements Runnable {
 			System.err.println("MCsocket packet received is insecure");
 		}
 	}
-	
-	private String getChunkHeader(){
-		return "CHUNK "+this.version+" "+this.server.getId()+" "+this.fileId+" "+this.chunkNr;
-	}
-	
+		
 	private byte[] getChunkMsg(byte[] body){
 		byte[] header = (this.getChunkHeader()+"\r\n").getBytes();
 		byte[] msg;
@@ -332,12 +320,6 @@ public class ControlProtocol implements Runnable {
 	
 	private void printErrMsg(String err){
 		System.err.println("Error in Control Protocol: "+err);
-	}
-
-	private int getRandomTime(){
-		Random r = new Random();
-   		int n = r.nextInt(400);
-     	return n;
 	}
 	
 	private void sleepRandom(){
