@@ -4,6 +4,13 @@ import java.net.*;
 import java.lang.*;
 import java.util.*;
 import java.util.stream.*;
+import static java.util.stream.Collectors.*;
+
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
 
 public class FileManager{
 	private int serverId;
@@ -33,7 +40,7 @@ public class FileManager{
 		return true;
 	}
 	
-	public synchronized void addChunk(String chunkId, int size, int repDeg, int peerId){
+	public synchronized void addChunk(String chunkId, String fileEncryptedId, int size, int repDeg, int peerId){
 		this.usedMem += size;
 		
 		for(ServerChunk chunk : this.chunks){
@@ -44,23 +51,25 @@ public class FileManager{
 			}
 		}
 		
-		ServerChunk chunk = new ServerChunk(chunkId,size,repDeg);
+		ServerChunk chunk = new ServerChunk(chunkId, fileEncryptedId, size,repDeg);
 		chunk.incRepDeg(peerId);
 		this.chunks.add(chunk);
 		System.out.println(this.toString());
 	}
 	
-	public synchronized void incChunkRepDeg(String chunkId, int peerId){
+	public synchronized void incChunkRepDeg(String chunkId, String fileEncryptedId, int repDeg, int peerId){
 		ServerChunk chunk;
 		for(int i = 0; i < this.chunks.size(); i++){
 			chunk = this.chunks.get(i);
 			if(chunk.getId().compareTo(chunkId) == 0){
+				chunk.setRepDeg(repDeg);
 				chunk.incRepDeg(peerId);
 				return;
 			}
 		}
 		
-		chunk = new ServerChunk(chunkId);
+		chunk = new ServerChunk(chunkId, fileEncryptedId);
+		chunk.setRepDeg(repDeg);
 		chunk.incRepDeg(peerId);
 		this.chunks.add(chunk);
 	}
@@ -78,18 +87,21 @@ public class FileManager{
 	
 	public synchronized boolean decFileChunkRepDeg(String fileId, int chunkNr, int peerId){
 		
-		String chunkId = ServerChunk.toId(fileId,chunkNr);
-		for(ServerChunk chunk : this.chunks){
-			if(chunk.getId().compareTo(chunkId) == 0)
-				chunk.decRepDeg(peerId);
-		}
-		
 		ServerFile file;
 		for(int i = 0; i < this.files.size(); i++){
 			file = this.files.get(i);
+			System.out.println("\nDEC REP DEGREE: " + file.getId() + " :::: " + fileId + 
+			" :: " + file.getEncryptedId().compareTo(fileId) + " \n");
 			if(file.getId().compareTo(fileId) == 0){
-				return file.decChunksRepDeg(chunkNr,peerId);
+				file.decChunksRepDeg(chunkNr,peerId);
 			}
+		}
+		
+		String chunkId = ServerChunk.toId(fileId,chunkNr);
+		for(ServerChunk chunk : this.chunks){
+			System.out.println("\nCHUNK ID: " + chunk.getId() + " :: " + chunkId + "\n");
+			if(chunk.getId().compareTo(chunkId) == 0)
+				return (chunk.decRepDeg(peerId) && chunk.onDisk());
 		}
 		
 		return false;
@@ -105,7 +117,10 @@ public class FileManager{
 		}
 		return null;
 	}
-	
+
+	public synchronized ArrayList<ServerFile> getFiles(){
+			return this.files.stream().map(ServerFile::new).collect(toCollection(ArrayList::new));
+	}
 	
 	public synchronized String getFilePath(String fileId){
 		ServerFile file;
@@ -157,7 +172,19 @@ public class FileManager{
 		return chunksToRemove;
 	}
 	
-	public void removeAllChunks(String fileId){
+	public void removeAllChunks(String fileId, String secretKey){ 
+		Cipher cipher; 
+		SecretKeySpec key;
+		
+		try {
+			cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+			byte[] decodedKey = Base64.getDecoder().decode(secretKey);
+			key = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
+
+		} catch(NoSuchAlgorithmException | NoSuchPaddingException e){
+			System.err.println("Error Removing All Chunks");
+			return;
+		}
 		
 		//Delete file if exists
 		synchronized(this.files){
@@ -165,8 +192,21 @@ public class FileManager{
 			for(int i = 0; i < this.files.size(); i++){
 				serverFile = this.files.get(i);
 				if(serverFile.getId().compareTo(fileId) == 0){
-					this.files.remove(i);
-					break;
+					
+					//delete if user is authorized
+					try {
+						
+						cipher.init(Cipher.DECRYPT_MODE, key);
+						byte[] encryptedFileName = Base64.getDecoder().decode(serverFile.getEncryptedId());
+						cipher.doFinal(encryptedFileName);
+
+						//it can decrypt
+						this.files.remove(i);
+						break;
+					}
+					catch(Exception e){
+						System.out.println("The client ins't authorize to delete this file");
+					}
 				}
 			}
 		}
@@ -178,10 +218,20 @@ public class FileManager{
 			for(int i = 0; i < this.chunks.size(); i++){
 				chunk = this.chunks.get(i);
 				if(chunk.getId().matches("(.*)"+fileId+"(.*)")){
-					this.chunks.remove(i);
-					this.usedMem -= chunk.getSize();
-					chunksToRemove.add(chunk.getId());
-					i--;
+
+					try {
+						cipher.init(Cipher.DECRYPT_MODE, key);
+						byte[] encryptedFileName = Base64.getDecoder().decode(chunk.getFileEncryptedId());
+						cipher.doFinal(encryptedFileName);
+	
+						this.chunks.remove(i);
+						this.usedMem -= chunk.getSize();
+						chunksToRemove.add(chunk.getId());
+						i--;
+					}
+					catch(Exception e) {
+						System.out.println("The client ins't authorize to delete this file");
+					}
 				}
 			}
 			this.toString();
@@ -206,7 +256,21 @@ public class FileManager{
 		}
 		return false;
 	}
-
+	
+	public synchronized boolean ownsChunk(String chunkId){
+		
+		String fileId = chunkId.split("_")[0];
+		System.out.println(fileId);
+		
+		for(ServerFile file : this.files){
+			System.out.println(file.getInitPeerId());
+			if(file.getId().compareTo(fileId) == 0 && file.getInitPeerId() == this.serverId)
+				return true;
+		}
+		
+		return false;
+	}
+	
 	public synchronized boolean containsChunk(String chunkId){
 		ServerChunk chunk;
 		for(int i = 0; i < this.chunks.size(); i++){
@@ -216,7 +280,7 @@ public class FileManager{
 		}
 		return false;
 	}
-	
+		
 	public synchronized int getPerceivedRepDeg(String chunkId){
 		ServerChunk chunk;
 		for(int i = 0; i < this.chunks.size(); i++){
@@ -226,7 +290,7 @@ public class FileManager{
 		}
 		return -1;
 	}
-
+	
 	public int getFileTotalChunks(String fileName){
 		File file = new File(fileName);
 		float size = (float) file.length();
@@ -281,7 +345,9 @@ public class FileManager{
 			outFile.createNewFile();
 			outStream = new FileOutputStream(outFile);
 		}
-		catch(IOException e){}
+		catch(IOException e){
+			System.err.println("Error creating file to save chunk : " + e);
+		}
 		
 		return outStream;
 	}
@@ -294,7 +360,7 @@ public class FileManager{
 	public synchronized long getUsedMem(){
 		return this.usedMem;
 	}
-	
+
 	public synchronized String toString(){
 		String lineSep = System.lineSeparator();
 		String doubleLineSep = lineSep+lineSep;

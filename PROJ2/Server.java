@@ -19,6 +19,7 @@ import javax.crypto.IllegalBlockSizeException;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 public class Server implements ServerInterf {
 
@@ -39,18 +40,22 @@ public class Server implements ServerInterf {
 	
 	private ConcurrentHashMap<String,Runnable> requests;
 	public ConcurrentHashMap<String,Runnable> restoreThreads;
+	public ConcurrentHashMap<String,Runnable> removedThreads;
 	private FileManager fileManager;
 		
 	public final static int MAX_WAIT = 400;
 	public final static int MAX_CHUNK_SIZE = 64000;
+	public final static int MAX_CHUNK_SIZE_ENCRYPTED = 64096;
 	private final static int MAX_BUFFER_SIZE = 70000;
 	public final static int MAX_MEM = 8388608;
 
 	private final static String keyString = "d1nnyomelhorfeiticeirodehogw4rts";
 	private static byte[] key;
+	private static SecretKeySpec adminKey;
+
 	
 	public static void main(String[] args){
-		if(args.length != 5){
+		if(args.length != 6){
 			Server.printUsage();
 			return;
 		}
@@ -71,7 +76,7 @@ public class Server implements ServerInterf {
 		String lineSep = System.lineSeparator();
 		String doubleLineSep = lineSep+lineSep;
 		String usage =  lineSep+
-						"   Server <version> <id> <MC> <MDB> <MDR>"+doubleLineSep+
+						"   Server <version> <id> <admin_id> <MC> <MDB> <MDR>"+doubleLineSep+
 						"      version: version of the protocol with the format <n>.<m>"+doubleLineSep+
 						"      id: server and rmi identifier"+doubleLineSep+
 						"      MC,MDB,MDR: multicast channels with the format <ip>/<port>";
@@ -83,29 +88,43 @@ public class Server implements ServerInterf {
 		
 		this.version = args[0];
 		this.id = Integer.parseInt(args[1]);
-		
+
+		// this.adminKey = args[2];
+
+		try {
+			MessageDigest sha = MessageDigest.getInstance("SHA-1");
+			byte[] key = sha.digest(args[2].getBytes("UTF-8"));
+			key = Arrays.copyOf(key, 16);
+
+			this.adminKey = new SecretKeySpec(key, "AES");
+			
+
+		} catch(NoSuchAlgorithmException | UnsupportedEncodingException e){
+			System.err.println("Error creating client key");
+		}
 		//Connect to RMI
 		this.connectRMI();
 		
 		try{
 			//Connect MCsocket
-			this.MCsocket = new TwinMulticastSocket(args[2], key);
+			this.MCsocket = new TwinMulticastSocket(args[3], key);
 	
 			//Connect MDBsocket
-			this.MDBsocket = new TwinMulticastSocket(args[3], key);
+			this.MDBsocket = new TwinMulticastSocket(args[4], key);
 		
 			//Connect MDRsocket
-			this.MDRsocket = new TwinMulticastSocket(args[4], key);
+			this.MDRsocket = new TwinMulticastSocket(args[5], key);
 		}
 		catch(IOException | NoSuchAlgorithmException | NoSuchPaddingException e){
 			System.err.println("Error setting up multicast sockets");
 			this.disconnect();
 			System.exit(1);
 		}
-		
+
 		this.fileManager = new FileManager(this.id);
 		this.requests = new ConcurrentHashMap<String,Runnable>();
 		this.restoreThreads = new ConcurrentHashMap<String,Runnable>();
+		this.removedThreads = new ConcurrentHashMap<String,Runnable>();
 		
 	    //Create Server Working Directory
 		this.createSWD(args);
@@ -197,11 +216,12 @@ public class Server implements ServerInterf {
 		return msg;
 	}
 	
-	public void backup(String fileName, int repDegree){
+	public void backup(SecretKeySpec clientKey, String fileName, int repDegree) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException{
 		this.printRequest("BACKUP "+fileName+" "+repDegree);
-		Runnable handler = new BackUpProtocol(this, fileName, repDegree);
+		Runnable handler = new BackUpProtocol(this, fileName, repDegree, clientKey);
 		this.requests.put("BACKUP"+ServerFile.toId(fileName), handler);
 		this.pool.execute(handler);
+		
 	}
 	
 	public void backupChunk(String fileId, int chunkNr){
@@ -210,24 +230,70 @@ public class Server implements ServerInterf {
 		this.pool.execute(handler);
 	}
 	
-	public void restore(String fileName) throws RemoteException {
+	public void restore(SecretKeySpec clientKey, String fileName) throws RemoteException, IOException,NoSuchPaddingException, NoSuchAlgorithmException {
 		this.printRequest("RESTORE "+fileName);
+		// TODO: verify this
 		String fileId = ServerFile.toId(fileName);
-		Runnable handler = new RestoreProtocol(this, fileName, fileId);
+		Runnable handler = new RestoreProtocol(this, fileName, fileId, clientKey);
 		this.requests.put("RESTORE"+ServerFile.toId(fileName), handler);
 		this.pool.execute(handler);
 	}
 	
-	public void delete(String fileName){
+	public void delete(SecretKeySpec clientKey, String fileName) throws NoSuchPaddingException, NoSuchAlgorithmException{
 		this.printRequest("DELETE "+fileName);
-		this.pool.execute(new DeleteProtocol(this, fileName));
+		this.pool.execute(new DeleteProtocol(this, fileName, clientKey));
 	}
 	
-	public void reclaim(int mem){
-		this.printRequest("RECLAIM "+mem);
-		this.pool.execute(new ReclaimProtocol(this, mem));
+	public String reclaim(SecretKeySpec clientKey, int mem) throws NoSuchPaddingException, NoSuchAlgorithmException{
+		String sA = new String(this.adminKey.getEncoded());
+		String sB = new String(clientKey.getEncoded());
+		String answer = "";
+		if(!sA.equals(sB)){
+			answer = "Authentication failed!";
+		}
+		else{
+			this.printRequest("RECLAIM "+mem);
+			this.pool.execute(new ReclaimProtocol(this, mem, clientKey));
+			answer = "Reclaim processed.";
+		}
+		return answer;
 	}
 	
+	private String listFiles(SecretKeySpec clientKey, ArrayList<ServerFile> files){
+
+		ArrayList<ServerFile> userFiles = new ArrayList<ServerFile>();
+		for(ServerFile file : files){
+			if(file.testKey(clientKey))
+				userFiles.add(file);
+		}
+
+		Collections.sort(userFiles);
+
+		String newLine = System.lineSeparator();
+
+		String list = "-------------------------------------------------------------------"+newLine+
+					  "                               Files                               "+newLine+newLine;
+
+
+		if(userFiles.size() == 0){
+			list +="                           Empty                               "+newLine+newLine;
+		}
+		else{
+			for(ServerFile file : userFiles)
+				list += file.toList()+newLine;
+		}
+
+		list += "-------------------------------------------------------------------";
+
+		return list;
+	}
+
+	public String list(SecretKeySpec clientKey){
+		this.printRequest("LIST");
+		ArrayList<ServerFile> files = this.fileManager.getFiles();
+		return this.listFiles(clientKey,files);
+	}
+
 	public String state(){
 		this.printRequest("STATE");
 		return this.fileManager.toString();
@@ -291,7 +357,7 @@ public class Server implements ServerInterf {
 		@Override
 		public void run() {
 			while(true){
-				byte buf[] = new byte[100];
+				byte buf[] = new byte[200];
 				DatagramPacket packet = new DatagramPacket(buf,buf.length);
 		
 				try{

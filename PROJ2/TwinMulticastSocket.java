@@ -15,7 +15,6 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
-import javax.swing.JOptionPane;
 
 
 public class TwinMulticastSocket {
@@ -81,10 +80,10 @@ public class TwinMulticastSocket {
 	}
 	
 	public void send(DatagramPacket packet) throws IOException,InvalidKeyException,BadPaddingException,IllegalBlockSizeException
-	{
-		
+	{	
+
 		packet.setData(encryptPacket(packet.getData()));
-		
+
 		try{
 			this.lock.lock();
 			this.out.setTimeToLive(1);
