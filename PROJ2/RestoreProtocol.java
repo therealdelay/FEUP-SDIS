@@ -1,4 +1,4 @@
-import java.io.*;
+	import java.io.*;
 import java.nio.*;
 import java.net.*;
 import java.lang.*;
@@ -38,6 +38,12 @@ public class RestoreProtocol implements Runnable {
 		System.out.println("Total Chunks: "+totalChunks);
 		this.outStream = fileManager.getOutStream(ServerFile.toRelativeName(this.fileName));
 
+		try {
+			this.server.getTCPSocket().accept();
+		} catch(IOException e ) {
+			System.out.println("Error on accepting TCP Socket.");
+			return;
+		}
 		
 		for(int i = 0; i < totalChunks; i++){
 			if(!this.receiveChunk()){
@@ -46,14 +52,46 @@ public class RestoreProtocol implements Runnable {
 			}
 			this.saveChunk();
 		}
-		
+
+		try {
+			this.server.getTCPSocket().close();
+		} 
+		catch(IOException e ) {
+			System.out.println("Error on closing TCP Socket.");
+			return;
+		}
+
 		this.exit();
 	}
 	
 	private boolean receiveChunk(){
+		long start = System.currentTimeMillis();
+		
 		this.sendGetChunkMsg();
 		
-		long start = System.currentTimeMillis();
+		Socket connectionSocket;
+		BufferedReader inputStream;
+
+		try {
+			connectionSocket = this.server.getTCPSocket().accept();			
+			
+			inputStream = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
+			
+		} catch(IOException e ) {
+			System.out.println("Error on accepting TCP Socket.");
+			return false;
+		}
+			
+		String input = inputStream.readLine();
+		System.out.println("Socket Restore " + connectionSocket.getPort());
+			
+		System.out.println("INPUT " + input);
+		
+			
+		this.buf = input.getBytes();
+
+		return this.buf != null;
+/*		
 		boolean done = false;
 		while(true){
 			try{
@@ -75,6 +113,9 @@ public class RestoreProtocol implements Runnable {
 		}
 		
 		return done;
+*/
+		
+
 	}
 	
 	private void saveChunk(){
@@ -105,7 +146,8 @@ public class RestoreProtocol implements Runnable {
 	}
 	
 	private String getGetChunkMsg(){
-		return "GETCHUNK "+this.server.getVersion()+" "+this.server.getId()+" "+this.fileId+" "+this.currChunk;
+		return "GETCHUNK "+this.server.getVersion()+" "+this.server.getId()+" "+this.fileId
+			+" "+this.currChunk;
 	}
 	
 	private void removeRequest(){
@@ -143,14 +185,14 @@ public class RestoreProtocol implements Runnable {
 		System.err.println("Error restoring file "+this.fileName+": "+err);
 	}
 	
-	public void chunk(int chunk, byte[] buf){
+	public void chunk(int chunk){
 		System.out.println("RECEBI chunk " + chunk);
+		Socket socket = this.server.getTCPSocket().accept();
 		try{
 			this.lock.lock();
 			if(chunk == this.currChunk && this.received == false){
 				this.received = true;
 				this.currChunk++;
-				this.buf = buf;
 				this.server.restoreThreads.clear();
 			}
 		}

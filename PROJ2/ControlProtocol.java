@@ -23,6 +23,7 @@ public class ControlProtocol implements Runnable {
 	private String chunkNr;
 	private String repDeg;
 	private boolean sendChunk;
+	private int port;
 	
 	private boolean receivedPutChunk = false;
 	private boolean receivedChunk = false;
@@ -53,7 +54,9 @@ public class ControlProtocol implements Runnable {
 		this.fileId = header[3];
 		if(header.length > 4){
 			this.chunkNr = header[4];
-			if(header.length > 5)
+			if(header.length > 5 && msgType.equals("GETCHUNK"))
+				this.port = Integer.parseInt(header[5]);
+			else if (header.length > 5)
 				this.repDeg = header[5];
 		}
 		
@@ -89,7 +92,6 @@ public class ControlProtocol implements Runnable {
 	}
 	
 	private void processStored(){
-		
 		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
 		
 		//Lookup file backup processes
@@ -113,7 +115,6 @@ public class ControlProtocol implements Runnable {
 		int repDeg = Integer.parseInt(this.repDeg);
 		String chunkId = ServerChunk.toId(this.fileId,chunkNr);
 		this.server.getFileManager().incChunkRepDeg(chunkId,repDeg,senderId);
-		
 	}
 	
 	private void processGetChunk(){
@@ -128,12 +129,9 @@ public class ControlProtocol implements Runnable {
 			this.printErrMsg("Chunk "+chunkId+" not found");
 			return;
 		}
-		
-		
-		
+				
 		String fileName = chunkId+".chunk";
 		FileInputStream inStream = fileManager.getInStream(fileName);
-		
 		
 		//Read
 		byte[] buf = new byte[Server.MAX_CHUNK_SIZE];
@@ -155,24 +153,32 @@ public class ControlProtocol implements Runnable {
 
 		this.sleepRandom();
 
-		/*
-		//System.out.println("Processing Removed...");
-		if(this.server.getFileManager().decFileChunkRepDeg(this.fileId, Integer.parseInt(this.chunkNr), Integer.parseInt(this.senderId))){
-			System.out.println("Starting removed treatment");
-			this.sleepRandom();
-			System.out.println("Replication degree below required on chunk nr "+this.chunkNr+" of file "+this.fileId);
-			//System.out.println("Starting chunk back up");
-			if(!this.receivedPutChunk)
-				this.server.backupChunk(this.fileId,Integer.parseInt(this.chunkNr));
-			
-			this.server.removedThreads.remove(handlerId);
-		}
-		*/
 		if(!this.receivedChunk){
-			this.sendChunkMsg(cleanBuf);
+			// So the other peers know to not send
+			this.sendChunkMsg(null);
 		}
+
+		this.sendThroughTCP(cleanBuf);
 		
 		this.server.restoreThreads.clear();
+	}
+
+	private void sendThroughTCP(byte[] buf) {
+		try {
+			Socket connectionSocket = this.server.getTCPSocket().accept();
+			
+			System.out.println("Socket Send " + connectionSocket.getPort());
+			
+			DataOutputStream outputStream = new DataOutputStream(connectionSocket.getOutputStream());
+			
+			outputStream.write(buf);
+		}
+		catch(IOException e){
+			this.printErrMsg("Error on sending CHUNK Message.");
+			return;
+		}
+		
+		this.server.restoreThreads.put("CHUNK"+this.fileId+"_"+this.chunkNr, this);
 	}
 
 	private int getRandomTime(){
@@ -205,7 +211,6 @@ public class ControlProtocol implements Runnable {
 	}
 
 	private void sendChunkMsg(byte[] buf){
-		System.out.println("Sending chunk.");
 		byte[] msg = this.getChunkMsg(buf);
 		TwinMulticastSocket socket = this.server.getMDRsocket();
 		DatagramPacket packet = new DatagramPacket(msg, msg.length, socket.getGroup(), socket.getPort());

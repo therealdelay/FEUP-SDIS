@@ -35,12 +35,32 @@ public class Chunk implements Runnable {
 		
 		if(handler != null){
 			System.out.println("ControlProtocol: Notifying Restore\n");
-			/*
-			System.out.println("ChunkBody: ");
-			System.out.println(new String(this.chunkBody));
-			*/
-			handler.chunk(Integer.parseInt(this.chunkNr.trim()), this.chunkBody);
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+			
+			handler.chunk(Integer.parseInt(this.chunkNr.trim()));
 		}
+		
+		ConcurrentHashMap<String,Runnable> restoreThreads = this.server.getRestoreThreads(); 
+		ControlProtocol handlerRestore = (ControlProtocol) restoreThreads.get("GETCHUNK"+this.fileId+"_"+this.chunkNr); 
+	 
+		if(handlerRestore != null){ 
+		  System.out.println("ControlProtocol: Notifying Restore GetChunk\n"); 
+		  
+		  handlerRestore.notifyGetChunk(this.fileId, this.chunkNr); 
+		} 
 	}
 	
 	

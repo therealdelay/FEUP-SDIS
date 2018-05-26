@@ -21,9 +21,10 @@ import java.security.NoSuchAlgorithmException;
 import javax.crypto.NoSuchPaddingException;
 
 public class Server implements ServerInterf {
-
+	
 	private int id;
 	private String version;
+	private int port;
 	
 	private Registry rmiRegistry;
 	
@@ -33,6 +34,8 @@ public class Server implements ServerInterf {
 	private Thread MDBlistener;
 	private TwinMulticastSocket MDRsocket;
 	private Thread MDRlistener;
+
+	private ServerSocket tcpSocket;
 
 	private ThreadPoolExecutor pool;
 	private Path SWD;
@@ -47,11 +50,12 @@ public class Server implements ServerInterf {
 	private final static int MAX_BUFFER_SIZE = 70000;
 	public final static int MAX_MEM = 8388608;
 
+
 	private final static String keyString = "d1nnyomelhorfeiticeirodehogw4rts";
 	private static byte[] key;
 	
 	public static void main(String[] args){
-		if(args.length != 5){
+		if(args.length != 6){
 			Server.printUsage();
 			return;
 		}
@@ -75,7 +79,8 @@ public class Server implements ServerInterf {
 						"   Server <version> <id> <MC> <MDB> <MDR>"+doubleLineSep+
 						"      version: version of the protocol with the format <n>.<m>"+doubleLineSep+
 						"      id: server and rmi identifier"+doubleLineSep+
-						"      MC,MDB,MDR: multicast channels with the format <ip>/<port>";
+						"      MC,MDB,MDR: multicast channels with the format <ip>/<port>" +
+						"      Port for TCP Socket <port>";
 						
 		System.out.println(usage);
 	}
@@ -117,10 +122,22 @@ public class Server implements ServerInterf {
 		
 		//Start multicast channels listener threads
 		this.startListenerThreads();
-		
+
+		configureTCPSocket(args);
+
 		System.out.println("Server set up and running");
 	}
 	
+	private void configureTCPSocket(String[] args) {
+		port = Integer.parseInt(args[5]);
+		
+		try {
+			this.tcpSocket = new ServerSocket(port);
+		} catch(IOException e) {
+			System.out.println("Error creating TCP socket on server.");
+		}
+		
+	}
 	
 	private void connectRMI(){
 		int port = Registry.REGISTRY_PORT;
@@ -253,6 +270,10 @@ public class Server implements ServerInterf {
 	public Path getSWD(){
 		return this.SWD;
 	}
+
+	public int getPort() {
+		return port;
+	}
 	
 	public ConcurrentHashMap<String,Runnable> getRequests(){
 		return this.requests;
@@ -278,6 +299,8 @@ public class Server implements ServerInterf {
 		return this.fileManager;
 	}
 	
+	public ServerSocket getTCPSocket() { return tcpSocket; }
+
 	private void deleteSWDContent(){
 		File[] files = this.SWD.toFile().listFiles();
 		for(File file : files){
