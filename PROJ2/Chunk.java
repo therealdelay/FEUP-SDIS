@@ -54,6 +54,7 @@ public class Chunk implements Runnable {
 		String msg = new String(this.buf);
 		String[] parts = msg.split("\r\n");
 		
+		//Parse header elements
 		String[] header = parts[0].split(" ");
 		this.version = header[1];
 		this.senderId = header[2];

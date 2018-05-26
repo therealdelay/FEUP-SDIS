@@ -3,12 +3,22 @@ import java.rmi.registry.Registry;
 import java.rmi.*;
 import java.io.*;
 import java.net.*;
+import java.util.Arrays;
+
+import javax.crypto.spec.SecretKeySpec;
+
+import java.security.InvalidKeyException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 
 public class TestApp {
 	private String url;
 	private String command;
 	private String[] args;
 	private ServerInterf proxy;
+
+	private static SecretKeySpec clientKey;
 	
 	private final static int BUF_SIZE = 1024 * 64;
 
@@ -26,12 +36,24 @@ public class TestApp {
 	public TestApp(String[] args){
 		
 		this.url = "rmi://"+args[0];
-		this.command = args[1].toUpperCase();
+		this.command = args[2].toUpperCase();
 		
-		int argsLength = args.length-2;
+		try {
+			MessageDigest sha = MessageDigest.getInstance("SHA-1");
+			byte[] key = sha.digest(args[1].getBytes("UTF-8"));
+			key = Arrays.copyOf(key, 16);
+
+			clientKey = new SecretKeySpec(key, "AES");
+			
+
+		} catch(NoSuchAlgorithmException | UnsupportedEncodingException e){
+			System.err.println("Error creating client key");
+		}
+		
+		int argsLength = args.length-3;
 		if(argsLength > 0){
 			this.args = new String[argsLength];
-			System.arraycopy(args, 2, this.args, 0, argsLength);
+			System.arraycopy(args, 3, this.args, 0, argsLength);
 		}
 		else
 			this.args = new String[0];
@@ -98,7 +120,7 @@ public class TestApp {
 		
 		System.out.println("Backing up file " + this.args[0] + " with replication degree of " + this.args[1] + ".");
 		try{
-			this.proxy.backup(this.args[0], Integer.parseInt(this.args[1]));
+			this.proxy.backup(clientKey, args[0], Integer.parseInt(this.args[1]));
 		}
 		catch(Exception e){
 			System.err.println("Failed to send: BACKUP");
@@ -124,7 +146,7 @@ public class TestApp {
 		
 		System.out.println("Restoring file " + this.args[0] + ".");
 		try{
-			this.proxy.restore(this.args[0]);
+			this.proxy.restore(clientKey, this.args[0]);
 		}
 		catch(Exception e){
 			System.err.println("Failed to restore");
@@ -149,7 +171,7 @@ public class TestApp {
 		
 		System.out.println("Deleting file " + this.args[0] + ".");
 		try{
-			this.proxy.delete(this.args[0]);
+			this.proxy.delete(clientKey, this.args[0]);
 		}
 		catch(Exception e){
 			System.err.println("Failed to delete");
@@ -176,18 +198,33 @@ public class TestApp {
 			return;
 		
 		this.connect();
+		String answer = "";
 		
 		int mem = 8*1024 - Integer.parseInt(this.args[0]);
 		System.out.println("Reclaiming " + mem + "KBytes of disk space.");
 		try{
-			this.proxy.reclaim(Integer.parseInt(this.args[0]));
+			answer = this.proxy.reclaim(clientKey, Integer.parseInt(this.args[0]));
 		}
 		catch(Exception e){
 			System.err.println("Failed to reclaim");
 		}
-		System.out.println("Reclaim processed.");
+		System.out.println(answer);
 	}
-	
+
+	private void list(){
+
+		this.connect();
+		
+		System.out.println("Retrieving user files");
+		try{
+			String list = this.proxy.list(clientKey);
+			System.out.println(list);
+		}
+		catch(Exception e){
+			System.err.println("Failed to list");
+		}
+	}
+
 	private void state(){
 		this.connect();
 		
@@ -222,6 +259,10 @@ public class TestApp {
 				
 			case "RECLAIM":
 				this.reclaim();
+				break;
+
+			case "LIST":
+				this.list();
 				break;
 				
 			case "STATE":

@@ -4,28 +4,31 @@ import java.util.Arrays;
 public class ServerChunk{
 	private String id;
 	private String fileId;
+	private String fileEncryptedId;
 	private int chunkNr;
 	private long size;
 	private boolean onDisk;
 	private int repDeg = -1;
 	private ArrayList<Integer> peers; //keeps track of the unique peers that have stored the chunk
 	
-	public ServerChunk(String id){
+	public ServerChunk(String id, String fileEncryptedId){
 		this.id = id;
 		
 		String[] parts = this.id.split("_");
 		this.fileId = parts[0];
+		this.fileEncryptedId = fileEncryptedId;
 		this.chunkNr = Integer.parseInt(parts[1]);
 		this.size = size;
 		this.peers = new ArrayList<Integer>();
 		this.onDisk = false;
 	}
 	
-	public ServerChunk(String id, long size, int repDeg){
+	public ServerChunk(String id, String fileEncryptedId, long size, int repDeg){
 		this.id  = id;
 
 		String[] parts = this.id.split("_");
 		this.fileId = parts[0];
+		this.fileEncryptedId = fileEncryptedId;
 		this.chunkNr = Integer.parseInt(parts[1]);
 		
 		this.size = size;
@@ -50,7 +53,7 @@ public class ServerChunk{
 	}
 		
 	public boolean decRepDeg(int peerId){
-		this.peers.remove(new Integer(peerId));
+		this.peers.remove(Integer.valueOf(peerId));
 		if(this.repDeg != -1)
 			return this.peers.size() < this.repDeg;
 		else
@@ -67,6 +70,10 @@ public class ServerChunk{
 	
 	public String getFileId(){
 		return this.fileId;
+	}
+
+	public String getFileEncryptedId() {
+		return this.fileEncryptedId;
 	}
 	
 	public String getFileName(){
@@ -113,8 +120,8 @@ public class ServerChunk{
 		String repDegStr = this.repDeg == -1 ? "-" : ""+this.repDeg;
 		
 		return "	ID: "+this.id+newLine+
-			   "	FileID: "+this.fileId+newLine+
-			   "	Number: "+this.chunkNr+newLine+
+		//	   "	FileID: "+this.fileId+newLine+
+		//	   "	Number: "+this.chunkNr+newLine+
 			   "	Size: "+this.size+newLine+
 			   "	RepDeg: "+repDegStr+newLine+
 			   "	Perceived RepDeg: "+this.getPerceivedRepDeg()+newLine+

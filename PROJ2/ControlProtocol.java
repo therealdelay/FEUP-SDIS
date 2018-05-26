@@ -20,6 +20,7 @@ public class ControlProtocol implements Runnable {
 	private String version;
 	private String senderId;
 	private String fileId;
+	private String fileEncryptedId;
 	private String chunkNr;
 	private String repDeg;
 	private boolean sendChunk;
@@ -51,13 +52,13 @@ public class ControlProtocol implements Runnable {
 		this.msgType = header[0];
 		this.version = header[1];
 		this.senderId = header[2];
-		this.fileId = header[3];
-		if(header.length > 4){
-			this.chunkNr = header[4];
-			if(header.length > 5 && msgType.equals("GETCHUNK"))
-				this.port = Integer.parseInt(header[5]);
-			else if (header.length > 5)
-				this.repDeg = header[5];
+		this.fileEncryptedId = header[3];
+		this.fileId = header[4];
+
+		if(header.length > 5){
+			this.chunkNr = header[5];
+			if(header.length > 6)
+				this.repDeg = header[6];
 		}
 		
 		if(this.senderId.compareTo(""+this.server.getId()) == 0){
@@ -134,7 +135,7 @@ public class ControlProtocol implements Runnable {
 		FileInputStream inStream = fileManager.getInStream(fileName);
 		
 		//Read
-		byte[] buf = new byte[Server.MAX_CHUNK_SIZE];
+		byte[] buf = new byte[Server.MAX_CHUNK_SIZE_ENCRYPTED];
 		int read;
 		try{
 			read = inStream.read(buf);
@@ -147,6 +148,8 @@ public class ControlProtocol implements Runnable {
 		
 		byte[] cleanBuf = new byte[read];
 		System.arraycopy(buf,0,cleanBuf,0,read);
+
+		System.out.println("ProcessGetChunk: " + cleanBuf.length  + " : Read: " + read);
 		
 		String handlerId = "GETCHUNK"+this.fileId+"_"+this.chunkNr;
 		this.server.restoreThreads.put(handlerId, this);
@@ -189,7 +192,7 @@ public class ControlProtocol implements Runnable {
 	
 	private void processDelete(){
 		System.out.println("Processing Delete...");
-		this.server.getFileManager().removeAllChunks(this.fileId);
+		this.server.getFileManager().removeAllChunks(this.fileId, this.fileEncryptedId); //fileEncrypted is the secretKey
 		System.out.println("File deleted!");
 	}
 
@@ -198,13 +201,14 @@ public class ControlProtocol implements Runnable {
 		//System.out.println("Processing Removed...");
 		if(this.server.getFileManager().decFileChunkRepDeg(this.fileId, Integer.parseInt(this.chunkNr), Integer.parseInt(this.senderId))){
 			String handlerId = "REMOVED"+this.fileId+"_"+this.chunkNr;
-			System.out.println("Starting removed treatment");
 			this.server.removedThreads.put(handlerId, this);
 			this.sleepRandom();
 			System.out.println("Replication degree below required on chunk nr "+this.chunkNr+" of file "+this.fileId);
 			//System.out.println("Starting chunk back up");
-			if(!this.receivedPutChunk)
+			if(!this.receivedPutChunk){
+				System.out.println("Starting removed chunk backup");
 				this.server.backupChunk(this.fileId,Integer.parseInt(this.chunkNr));
+			}
 			
 			this.server.removedThreads.remove(handlerId);
 		}
