@@ -311,7 +311,7 @@ public class FileManager{
 		return inStream;
 	}
 	
-	private String getSWDFilePathName(String fileName){
+	public String getSWDFilePathName(String fileName){
 		return this.WDir.toString()+"/"+fileName;
 	}
 	

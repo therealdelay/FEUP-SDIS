@@ -26,6 +26,7 @@ public class Server implements ServerInterf {
 	private int id;
 	private String version;
 	private int port;
+	private String address;
 	
 	private Registry rmiRegistry;
 	
@@ -36,7 +37,7 @@ public class Server implements ServerInterf {
 	private TwinMulticastSocket MDRsocket;
 	private Thread MDRlistener;
 
-	private ServerSocket tcpSocket;
+	private ServerSocket tcpSocket; 
 
 	private ThreadPoolExecutor pool;
 	private Path SWD;
@@ -59,11 +60,11 @@ public class Server implements ServerInterf {
 
 	
 	public static void main(String[] args){
-		if(args.length != 6){
+		if(args.length != 8){
 			Server.printUsage();
 			return;
 		}
-
+		
 		try {
 			MessageDigest sha = MessageDigest.getInstance("SHA-1");
 			key = sha.digest(keyString.getBytes("UTF-8"));
@@ -146,8 +147,9 @@ public class Server implements ServerInterf {
 	}
 	
 	private void configureTCPSocket(String[] args) {
-		port = Integer.parseInt(args[5]);
-		
+		address = args[6];
+		port = Integer.parseInt(args[7]);
+		System.out.println("YOU ARE NOW LISTENING ON RADIO " + port + " " + address);
 		try {
 			this.tcpSocket = new ServerSocket(port);
 		} catch(IOException e) {
@@ -338,6 +340,10 @@ public class Server implements ServerInterf {
 	public int getPort() {
 		return port;
 	}
+
+	public String getAddress() {
+		return address;
+	}
 	
 	public ConcurrentHashMap<String,Runnable> getRequests(){
 		return this.requests;
@@ -384,7 +390,7 @@ public class Server implements ServerInterf {
 		@Override
 		public void run() {
 			while(true){
-				byte buf[] = new byte[200];
+				byte buf[] = new byte[300];
 				DatagramPacket packet = new DatagramPacket(buf,buf.length);
 		
 				try{

@@ -1,10 +1,11 @@
-	import java.io.*;
+import java.io.*;
 import java.nio.*;
 import java.net.*;
 import java.lang.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
+import java.io.DataInputStream;
 
 import java.security.InvalidKeyException;
 import javax.crypto.BadPaddingException;
@@ -16,9 +17,9 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 
 public class RestoreProtocol implements Runnable {
-	
-	private final static int TIMEOUT = 5000;
-	
+
+	private final static int TIMEOUT = 1000;
+
 	private Server server;
 	private String fileName;
 	private String fileId;
@@ -26,13 +27,15 @@ public class RestoreProtocol implements Runnable {
 	private boolean received = false;
 	private byte[] buf;
 	private ReentrantLock lock;
+	private int currOffset = 0;
 
 	private SecretKeySpec secretKey;
 	private Cipher cipher;
-	
+
 	private FileOutputStream outStream;
-	
-	public RestoreProtocol(Server server, String fileName, String fileId, SecretKeySpec clientKey) throws IOException, UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchPaddingException{
+
+	public RestoreProtocol(Server server, String fileName, String fileId, SecretKeySpec clientKey)
+			throws IOException, UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchPaddingException {
 		this.server = server;
 		this.fileName = fileName;
 		this.fileId = fileId;
@@ -41,186 +44,155 @@ public class RestoreProtocol implements Runnable {
 		this.secretKey = clientKey;
 		this.cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 	}
-	
+
 	@Override
-	public void run (){
+	public void run() {
 		FileManager fileManager = this.server.getFileManager();
 		int totalChunks = fileManager.getFileTotalChunks(this.fileName);
-		System.out.println("Total Chunks: "+totalChunks);
-		this.outStream = fileManager.getOutStream(ServerFile.toRelativeName(this.fileName));
-
-		try {
-			this.server.getTCPSocket().accept();
-		} catch(IOException e ) {
-			System.out.println("Error on accepting TCP Socket.");
-			return;
-		}
+		System.out.println("Total Chunks: " + totalChunks);
 		
-		for(int i = 0; i < totalChunks; i++){
-			if(!this.receiveChunk()){
-				this.exit_err("Unable to restore chunk "+this.currChunk+" of file "+this.fileName);
+		setOutputStream(fileManager);
+		
+		this.sendGetChunkMsg();
+		Socket connectionSocket;
+
+		for (int i = 0; i < totalChunks; i++) {
+			this.sendGetChunkMsg();
+			++currChunk;
+			try {
+				connectionSocket = this.server.getTCPSocket().accept();
+			} catch (IOException e) {
+				System.out.println("Error on accepting TCP Socket");
 				return;
 			}
-			this.saveChunk();
-		}
 
-		try {
-			this.server.getTCPSocket().close();
-		} 
-		catch(IOException e ) {
-			System.out.println("Error on closing TCP Socket.");
-			return;
+			if (!this.receiveChunk(connectionSocket)) {
+				this.exit_err("Unable to restore chunk " + this.currChunk + " of file " + this.fileName);
+				return;
+			}
+			try {
+				connectionSocket.close();
+			} catch (IOException e) {
+				System.out.println("Error on closing TCP Socket.");
+				return;
+			}
+
 		}
 
 		this.exit();
 	}
-	
-	private boolean receiveChunk(){
-		long start = System.currentTimeMillis();
-		
-		this.sendGetChunkMsg();
-		
-		Socket connectionSocket;
-		BufferedReader inputStream;
 
-		try {
-			connectionSocket = this.server.getTCPSocket().accept();			
-			
-			inputStream = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
-			
-		} catch(IOException e ) {
-			System.out.println("Error on accepting TCP Socket.");
-			return false;
-		}
-			
-		String input = inputStream.readLine();
-		System.out.println("Socket Restore " + connectionSocket.getPort());
-			
-		System.out.println("INPUT " + input);
-		
-			
-		this.buf = input.getBytes();
+	private void setOutputStream(FileManager fileManager) {
 
-		return this.buf != null;
-/*		
-		boolean done = false;
-		while(true){
-			try{
-				this.lock.lock();
-				if(this.received){
-					this.received = false;
-					done = true;
-				}
-			}
-			finally{
-				this.lock.unlock();
-			}
-			
-			if(done)
-				break;
-			
-			if(System.currentTimeMillis() - start > RestoreProtocol.TIMEOUT)
-				break;
-		}
-		
-		return done;
-*/
-		
-
-	}
-	
-	private void saveChunk(){
-		System.out.println("RestoreProt BufLength: "+this.buf.length);
 		try{
-			this.outStream.write(this.buf,0,this.buf.length);
+			File outFile = new File(fileManager.getSWDFilePathName(ServerFile.toRelativeName(this.fileName)));
+			outFile.createNewFile();
+			this.outStream = new FileOutputStream(outFile, true);
 		}
 		catch(IOException e){
-			this.printErrMsg("Unable to save chunk "+this.currChunk+" of file "+this.fileName);
+			System.err.println("Error creating file to save chunk : " + e);
 		}
 	}
-	
-	private void sendGetChunkMsg(){
+
+	private boolean receiveChunk(Socket connectionSocket) {
+		try {
+			DataInputStream in = new DataInputStream(new BufferedInputStream(connectionSocket.getInputStream()));
+
+			int count;
+			byte[] buffer = new byte[Server.MAX_CHUNK_SIZE_ENCRYPTED];
+			byte[] total = null;
+			while ((count = in.read(buffer)) > 0) {
+				total = new byte[count];
+
+				System.arraycopy(buffer, 0, total, 0, count);
+				System.out.println("Reading " + count);
+			}
+
+			System.out.println("offset " + currOffset);
+			byte[] decrypted = decryptBody(total);
+
+			outStream.write(decrypted);
+			currOffset += total.length;
+
+			in.close();
+
+		} catch (IOException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException e) {
+			System.out.println("Error on reading from socket. " + e);
+			return false;
+		}
+
+		this.received = false;
+		return true;
+
+	}
+
+	private void sendGetChunkMsg() {
 		String msg = this.getGetChunkMsg();
 		TwinMulticastSocket socket = this.server.getMCsocket();
 		DatagramPacket packet = new DatagramPacket(msg.getBytes(), msg.length(), socket.getGroup(), socket.getPort());
-		
-		//Send msg
-		try{
+
+		// Send msg
+		try {
 			socket.send(packet);
-		}
-		catch(IOException e){
+		} catch (IOException e) {
 			this.printErrMsg("Unable to send STORED message");
-		}
-		catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+		} catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
 			System.err.println("MCsocket packet received is insecure");
 		}
 	}
-	
-	private String getGetChunkMsg(){
-		return "GETCHUNK "+this.server.getVersion()+" "+this.server.getId()+" "+ ServerFile.toEncryptedId(this.fileName, this.secretKey)+" "+this.fileId+" "+this.currChunk;
+
+	private String getGetChunkMsg() {
+		return "GETCHUNK " + this.server.getVersion() + " " + this.server.getId() + " "
+				+ ServerFile.toEncryptedId(this.fileName, this.secretKey) + " " + this.fileId + " " + this.currChunk
+				+ " " + this.server.getAddress() + " " + this.server.getPort();
 	}
-	
-	private void removeRequest(){
-		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
-		requests.remove("RESTORE"+this.fileId);
+
+	private void removeRequest() {
+		ConcurrentHashMap<String, Runnable> requests = this.server.getRequests();
+		requests.remove("RESTORE" + this.fileId);
 	}
-	
-	private void exit(){
-		try{
+
+	private void exit() {
+		try {
 			this.outStream.close();
-		}
-		catch(IOException e){
+		} catch (IOException e) {
 			this.printErrMsg("Unable to close input stream");
 		}
-		System.out.println("File "+this.fileName+" restored up with success!");
-		
+		System.out.println("File " + this.fileName + " restored up with success!");
+
 		this.removeRequest();
 	}
-	
-	private void exit_err(String err){
+
+	private void exit_err(String err) {
 		this.printErrMsg(err);
-		try{
-			if(this.outStream != null)
+		try {
+			if (this.outStream != null)
 				this.outStream.close();
-		}
-		catch(IOException e){
+		} catch (IOException e) {
 			this.printErrMsg("Unable to close output stream");
 		}
-		
+
 		this.server.getFileManager().deleteSWDFile(ServerFile.toRelativeName(this.fileName));
 		this.removeRequest();
 	}
-	
-	private void printErrMsg(String err){
-		System.err.println("Error restoring file "+this.fileName+": "+err);
-	}
-	
-	public void chunk(int chunk){
-		System.out.println("RECEBI chunk " + chunk);
-		Socket socket = this.server.getTCPSocket().accept();
-		try{
-			this.lock.lock();
-			if(chunk == this.currChunk && this.received == false){
-				this.received = true;
-				this.currChunk++;
-				
-				this.buf = decryptBody(buf);
 
-				this.server.restoreThreads.clear();
-			}
-		}
-		catch(IOException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException e){
-			this.exit_err("Error decrypting chunk "+this.currChunk + " : " + e);
-			return;
-		}
-		finally{
-			this.lock.unlock();
-		}
+	private void printErrMsg(String err) {
+		System.err.println("Error restoring file " + this.fileName + ": " + err);
 	}
 
-	public byte[] decryptBody(byte[] body) throws IOException,InvalidKeyException,BadPaddingException,IllegalBlockSizeException
-	{	
-		System.out.println("DECRYPT: " + body.length);
+	public byte[] decryptBody(byte[] body)
+			throws IOException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+
+		if (body == null) {
+
+			System.out.println("wat");
+
+		}
+
+		System.out.println("DECRYPT: "
+
+				+ body.length);
+
 		this.cipher.init(Cipher.DECRYPT_MODE, this.secretKey);
 		return this.cipher.doFinal(body);
 	}

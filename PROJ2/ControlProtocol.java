@@ -24,8 +24,11 @@ public class ControlProtocol implements Runnable {
 	private String chunkNr;
 	private String repDeg;
 	private boolean sendChunk;
-	private int port;
-	
+	private int portToSend;
+	private String addressToSend;
+
+
+
 	private boolean receivedPutChunk = false;
 	private boolean receivedChunk = false;
 	
@@ -55,10 +58,15 @@ public class ControlProtocol implements Runnable {
 		this.fileEncryptedId = header[3];
 		this.fileId = header[4];
 
+		System.out.println("HEADER IS " + Arrays.toString(header));
 		if(header.length > 5){
 			this.chunkNr = header[5];
 			if(header.length > 6)
 				this.repDeg = header[6];
+			if (header.length > 7) {
+				this.addressToSend = header[6];
+				this.portToSend = Integer.parseInt(header[7]);
+			}
 		}
 		
 		if(this.senderId.compareTo(""+this.server.getId()) == 0){
@@ -115,7 +123,7 @@ public class ControlProtocol implements Runnable {
 		int senderId = Integer.parseInt(this.senderId);
 		int repDeg = Integer.parseInt(this.repDeg);
 		String chunkId = ServerChunk.toId(this.fileId,chunkNr);
-		this.server.getFileManager().incChunkRepDeg(chunkId,repDeg,senderId);
+		this.server.getFileManager().incChunkRepDeg(chunkId,fileEncryptedId, repDeg,senderId);
 	}
 	
 	private void processGetChunk(){
@@ -125,13 +133,15 @@ public class ControlProtocol implements Runnable {
 		
 		String[] parts = this.fileId.split("\\.");
 		String chunkId = parts[0]+"_"+this.chunkNr;
+
 		
 		if(!fileManager.containsChunk(chunkId)){
 			this.printErrMsg("Chunk "+chunkId+" not found");
 			return;
 		}
-				
+		
 		String fileName = chunkId+".chunk";
+		System.out.println("filename " + fileName);
 		FileInputStream inStream = fileManager.getInStream(fileName);
 		
 		//Read
@@ -157,24 +167,35 @@ public class ControlProtocol implements Runnable {
 		this.sleepRandom();
 
 		if(!this.receivedChunk){
-			// So the other peers know to not send
 			this.sendChunkMsg(null);
 		}
+		else {
+			System.out.println("Another peer is already handling this task, exiting");
+			return;
+		}
+		System.out.println("Attempting to send with " + Arrays.toString(parts));
 
-		this.sendThroughTCP(cleanBuf);
+		try {
+			InetAddress address = InetAddress.getByName(addressToSend);
+			
+			this.sendThroughTCP(cleanBuf, address);
+		} catch (UnknownHostException e) {
+			System.out.println("Error on getting address from GETCHUNK");
+		}
 		
 		this.server.restoreThreads.clear();
 	}
 
-	private void sendThroughTCP(byte[] buf) {
+	private void sendThroughTCP(byte[] buf, InetAddress address) {
 		try {
-			Socket connectionSocket = this.server.getTCPSocket().accept();
-			
+			Socket connectionSocket = new Socket(address, portToSend);
 			System.out.println("Socket Send " + connectionSocket.getPort());
 			
 			DataOutputStream outputStream = new DataOutputStream(connectionSocket.getOutputStream());
-			
+					
 			outputStream.write(buf);
+
+			connectionSocket.close();
 		}
 		catch(IOException e){
 			this.printErrMsg("Error on sending CHUNK Message.");
@@ -239,9 +260,15 @@ public class ControlProtocol implements Runnable {
 	
 	private byte[] getChunkMsg(byte[] body){
 		byte[] header = (this.getChunkHeader()+"\r\n").getBytes();
-		byte[] msg = new byte[header.length+body.length];
+		byte[] msg;
+		if (body != null)
+			msg = new byte[header.length+body.length];
+		else 
+			msg = new byte[header.length];
+		
 		System.arraycopy(header,0,msg,0,header.length);
-		System.arraycopy(body,0,msg,header.length,body.length);
+		if (body != null)
+			System.arraycopy(body,0,msg,header.length,body.length);
 		return msg;
 	}
 	
@@ -266,7 +293,9 @@ public class ControlProtocol implements Runnable {
 	}
 
 	public void notifyGetChunk(String fileId, String chunkNr) {
-		if(this.fileId.compareTo(fileId)==0 && this.chunkNr.compareTo(chunkNr) == 0);
+		if(this.fileId.compareTo(fileId)==0 && this.chunkNr.compareTo(chunkNr) == 0); {
 			this.receivedChunk = true;
+			System.out.println("NOTIFIED, STOPPING");
+		}
 	}
 }

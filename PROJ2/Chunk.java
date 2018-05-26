@@ -29,27 +29,25 @@ public class Chunk implements Runnable {
 		
 		if(this.parseRequest())
 			return;
-				
+		
+		/*
 		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
 		RestoreProtocol handler = (RestoreProtocol) requests.get("RESTORE"+this.fileId);
 		
 		if(handler != null){
 			System.out.println("ControlProtocol: Notifying Restore\n");
 			handler.chunk(Integer.parseInt(this.chunkNr.trim()));
-		}
+		} */
+			
+		ConcurrentHashMap<String,Runnable> restoreThreads = this.server.getRestoreThreads(); 
+		ControlProtocol handlerRestore = (ControlProtocol) restoreThreads.get("GETCHUNK"+this.fileId+"_"+this.chunkNr); 
+	 
+		if(handlerRestore != null){ 
+		  System.out.println("ControlProtocol: Notifying Restore GetChunk\n"); 
+		  handlerRestore.notifyGetChunk(this.fileId, this.chunkNr); 
+		} 
+	}
 		
-		
-    ConcurrentHashMap<String,Runnable> restoreThreads = this.server.getRestoreThreads(); 
-    ControlProtocol handlerRestore = (ControlProtocol) restoreThreads.get("GETCHUNK"+this.fileId+"_"+this.chunkNr); 
- 
-    if(handlerRestore != null){ 
-      System.out.println("ControlProtocol: Notifying Restore GetChunk\n"); 
-      handlerRestore.notifyGetChunk(this.fileId, this.chunkNr); 
-    } 
-
-		
-	
-	
 	private boolean parseRequest(){
 		String msg = new String(this.buf);
 		String[] parts = msg.split("\r\n");
