@@ -76,7 +76,7 @@ public class Server implements ServerInterf {
 		String lineSep = System.lineSeparator();
 		String doubleLineSep = lineSep+lineSep;
 		String usage =  lineSep+
-						"   Server <version> <id> <MC> <MDB> <MDR>"+doubleLineSep+
+						"   Server <version> <id> <admin_id> <MC> <MDB> <MDR>"+doubleLineSep+
 						"      version: version of the protocol with the format <n>.<m>"+doubleLineSep+
 						"      id: server and rmi identifier"+doubleLineSep+
 						"      MC,MDB,MDR: multicast channels with the format <ip>/<port>";

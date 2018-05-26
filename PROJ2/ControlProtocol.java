@@ -47,12 +47,12 @@ public class ControlProtocol implements Runnable {
 		
 		//Parse header elements
 		String[] header = parts[0].trim().split(" ");
-		//System.out.println("HEADER: " + parts[0]);
 		this.msgType = header[0];
 		this.version = header[1];
 		this.senderId = header[2];
 		this.fileEncryptedId = header[3];
 		this.fileId = header[4];
+
 		if(header.length > 5){
 			this.chunkNr = header[5];
 			if(header.length > 6)

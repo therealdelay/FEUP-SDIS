@@ -76,7 +76,7 @@ public class ReclaimProtocol implements Runnable {
 	}
 	
 	private String getRemovedMsg(String fileId, String fileEncryptedId, int chunkNr){
-		return "REMOVED "+this.server.getVersion()+" "+this.server.getId()+" "+fileId + " " + fileEncryptedId + " " + chunkNr;
+		return "REMOVED "+this.server.getVersion()+" "+this.server.getId()+" "+ fileEncryptedId+ " " + fileId + " " + chunkNr;
 	}
 	
 	private void printErrMsg(String err){
