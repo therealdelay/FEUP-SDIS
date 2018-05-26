@@ -200,13 +200,13 @@ public class ServerFile implements Comparable<ServerFile>{
 	}
 	
 	public String toMsg(){
+		return this.encryptedId+" "+this.id+" "+this.pathName+" "+this.lastModified+" "+this.initPeerId;
+	}
 
-		File file = new File(this.pathName);
-
-		return this.encryptedId + " " + this.id+" "+this.pathName+" "+this.lastModified+" "+this.initPeerId;
+	public String toMeta(){
+		return "FILE "+this.toMsg()+" "+this.replicationDeg;
 	}
 	
-
 	public String toList(){
 		String lineSep = System.lineSeparator();
 		return  "	Name: "+ServerFile.toRelativeName(this.pathName)+lineSep+

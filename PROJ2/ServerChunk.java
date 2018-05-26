@@ -1,5 +1,7 @@
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.stream.Collectors;
+import java.util.stream.Collectors.*;
 
 public class ServerChunk{
 	private String id;
@@ -35,6 +37,21 @@ public class ServerChunk{
 		this.repDeg = repDeg;
 		this.peers = new ArrayList<Integer>();
 		this.onDisk = true;
+	}
+
+
+	public ServerChunk(String id, String fileEncryptedId, ArrayList<Integer> peers, int repDeg){
+		this.id  = id;
+
+		String[] parts = this.id.split("_");
+		this.fileId = parts[0];
+		this.fileEncryptedId = fileEncryptedId;
+		this.chunkNr = Integer.parseInt(parts[1]);
+
+		this.size = 0;
+		this.repDeg = repDeg;
+		this.peers = peers;
+		this.onDisk = false;
 	}
 	
 	public static String toId(String fileId, int chunkNr){
@@ -113,6 +130,11 @@ public class ServerChunk{
 	public void removeFromDisk(int peerId){
 		this.onDisk = false;
 		this.decRepDeg(peerId);
+	}
+
+	public String toMeta(){
+		String peersStr = this.peers.stream().map(Object::toString).collect(Collectors.joining(","));
+		return "CHUNK "+this.id+" "+this.fileEncryptedId+" "+peersStr+" "+this.repDeg;
 	}
 
 	public String toString(){

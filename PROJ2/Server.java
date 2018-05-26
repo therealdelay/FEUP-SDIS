@@ -37,7 +37,10 @@ public class Server implements ServerInterf {
 
 	private ThreadPoolExecutor pool;
 	private Path SWD;
-	
+
+	public boolean ready = false;
+
+	public InitProtocol initThread;
 	private ConcurrentHashMap<String,Runnable> requests;
 	public ConcurrentHashMap<String,Runnable> restoreThreads;
 	public ConcurrentHashMap<String,Runnable> removedThreads;
@@ -136,6 +139,16 @@ public class Server implements ServerInterf {
 		this.startListenerThreads();
 		
 		System.out.println("Server set up and running");
+
+		try{
+			this.initThread = new InitProtocol(this);
+		}
+		catch(Exception e){
+			System.err.println("Failed to initialize initial protocol");
+			this.disconnect();
+		}
+
+		this.pool.execute(this.initThread);
 	}
 	
 	
@@ -210,6 +223,12 @@ public class Server implements ServerInterf {
 		
 		System.exit(1);
 	}
+
+	private boolean authenticateAdmin(SecretKeySpec clientKey){
+		String sA = new String(this.adminKey.getEncoded());
+		String sB = new String(clientKey.getEncoded());
+		return sA.equals(sB);
+	}
 	
 	public String echo(String msg){
 		this.printRequest("ECHO "+msg);
@@ -245,16 +264,14 @@ public class Server implements ServerInterf {
 	}
 	
 	public String reclaim(SecretKeySpec clientKey, int mem) throws NoSuchPaddingException, NoSuchAlgorithmException{
-		String sA = new String(this.adminKey.getEncoded());
-		String sB = new String(clientKey.getEncoded());
+		this.printRequest("RECLAIM "+mem);
 		String answer = "";
-		if(!sA.equals(sB)){
-			answer = "Authentication failed!";
-		}
-		else{
-			this.printRequest("RECLAIM "+mem);
+		if(this.authenticateAdmin(clientKey)){
 			this.pool.execute(new ReclaimProtocol(this, mem, clientKey));
 			answer = "Reclaim processed.";
+		}
+		else{
+			answer = "Authentication failed!";
 		}
 		return answer;
 	}
@@ -294,9 +311,15 @@ public class Server implements ServerInterf {
 		return this.listFiles(clientKey,files);
 	}
 
-	public String state(){
+	public String state(SecretKeySpec clientKey){
 		this.printRequest("STATE");
-		return this.fileManager.toString();
+		String answer = "";
+		if(authenticateAdmin(clientKey))
+			answer = this.fileManager.toString();
+		else
+			answer = "Authentication failed!";
+
+		return answer;
 	}
 	
 	private void printRequest(String request){

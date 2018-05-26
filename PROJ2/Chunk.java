@@ -1,3 +1,4 @@
+
 import java.io.*;
 import java.nio.*;
 import java.net.*;
@@ -12,10 +13,13 @@ public class Chunk implements Runnable {
 	private int trueBufLength;
 	private byte[] chunkBody;
 	private Server server;
+	private String msgType;
 	private String version;
 	private String senderId;
 	private String fileId;
 	private String chunkNr;
+	private String blockNr;
+	private String metaData;
 	
 	public Chunk(Server server, byte[] buf, int length){
 		this.server = server;
@@ -29,7 +33,72 @@ public class Chunk implements Runnable {
 		
 		if(this.parseRequest())
 			return;
+
+		this.processMsg();
+	}
+
+	private void processMsg(){
+		switch(this.msgType){
+			case "CHUNK":
+				this.processChunk();
+				break;
 				
+			case "META":
+				this.processMeta();
+				break;
+				
+			default:
+				this.printErrMsg("Unkown message");
+				break;
+		}
+	}	
+	
+	private boolean parseRequest(){
+		String msg = new String(this.buf);
+
+		System.out.println(msg);
+		String[] parts = msg.split("\r\n");
+		System.out.println(parts.length);
+		
+		//Parse header elements
+		String[] header = parts[0].split(" ");
+		this.msgType = header[0];
+		this.version = header[1];
+		this.senderId = header[2];
+
+
+		if(header.length > 4){
+			this.fileId = header[3];
+			this.chunkNr = header[4];
+
+			//Copy actual body
+			int headerLength = parts[0].length()+2;
+			int bodyLength = this.trueBufLength - headerLength;
+			//System.out.println("Actual body copied size: "+ bodyLength);
+			this.chunkBody = new byte[bodyLength];
+			System.arraycopy(this.buf, headerLength, this.chunkBody, 0, bodyLength);
+		}
+		else{
+
+			this.blockNr = header[3];
+
+			if(parts.length == 1)
+				this.metaData = "";
+			else
+				this.metaData = parts[1];
+			System.out.println(this.metaData);
+		}
+		
+		if(this.senderId.compareTo(""+this.server.getId()) != 0){
+			System.out.println("Packet received at MDBsocket: " + Arrays.toString(header));
+			return false;
+		}
+		else
+			return true;
+	}
+
+
+	private void processChunk(){
 		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
 		RestoreProtocol handler = (RestoreProtocol) requests.get("RESTORE"+this.fileId);
 		
@@ -42,32 +111,10 @@ public class Chunk implements Runnable {
 			handler.chunk(Integer.parseInt(this.chunkNr.trim()), this.chunkBody);
 		}
 	}
-	
-	
-	private boolean parseRequest(){
-		String msg = new String(this.buf);
-		String[] parts = msg.split("\r\n");
-		
-		//Parse header elements
-		String[] header = parts[0].split(" ");
-		this.version = header[1];
-		this.senderId = header[2];
-		this.fileId = header[3];
-		this.chunkNr = header[4];
-		
-		//Copy actual body
-		int headerLength = parts[0].length()+2;
-		int bodyLength = this.trueBufLength - headerLength;
-		//System.out.println("Actual body copied size: "+ bodyLength);
-		this.chunkBody = new byte[bodyLength];
-		System.arraycopy(this.buf, headerLength, this.chunkBody, 0, bodyLength);
-		
-		if(this.senderId.compareTo(""+this.server.getId()) != 0){
-			//System.out.println("Packet received at MDBsocket: " + Arrays.toString(header)+" with size "+this.chunkBody.length);
-			return false;
-		}
-		else
-			return true;
+
+
+	private void processMeta(){
+		this.server.initThread.meta(Integer.parseInt(this.blockNr),this.metaData);
 	}
 	
 	private void printErrMsg(String err){

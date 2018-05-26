@@ -230,7 +230,7 @@ public class TestApp {
 		
 		System.out.println("Retrieving peer state");
 		try{
-			String state = this.proxy.state();
+			String state = this.proxy.state(this.clientKey);
 			System.out.println(state);
 		}
 		catch(Exception e){
