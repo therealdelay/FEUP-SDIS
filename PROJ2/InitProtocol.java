@@ -20,10 +20,13 @@ public class InitProtocol implements Runnable {
 	private final static int MAX_TRIES = 5;
 	
 	private Server server;
-	private String metaData = "";
+	private boolean receivedMetaData = false;   //true if all of the metadata was received successfully
+	private String metaData = "";				//contains the metadata
 	private String currData;
 	private int currBlock;
 	private boolean newData = false;
+
+	private ServerChunk currChunk;
 
 	public InitProtocol(Server server) throws IOException, UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchPaddingException
 	{
@@ -32,7 +35,22 @@ public class InitProtocol implements Runnable {
 	
 	@Override
 	public void run (){
+
+		this.server.printMsg("Synchronizing...");
 		getMetaData();
+
+		this.server.ready = true;
+
+		if(receivedMetaData){
+			this.server.printMsg("Reading SWD");
+			this.initFileManager();
+		}
+		else{
+			this.server.printMsg("Cleaning SWD");
+			this.server.getFileManager().cleanSWD();
+		}
+
+		this.server.printMsg("Ready");
 	}
 	
 	private void getMetaData(){
@@ -43,11 +61,6 @@ public class InitProtocol implements Runnable {
 			this.newData = false;
 			this.currBlock++;
 		}
-
-		System.out.println("InitThread: Finished retreiving metaData");
-		this.server.ready = true;
-
-		this.initFileManager();
 	}
 	
 	private boolean getMetaBlock(){
@@ -77,8 +90,10 @@ public class InitProtocol implements Runnable {
 			if(this.newData){
 				this.metaData += this.currData;
 
-				if(this.currData.compareTo("") == 0)
+				if(this.currData.compareTo("") == 0){
+					receivedMetaData = true;
 					return false;
+				}
 				else
 					return true;
 			}
@@ -116,24 +131,51 @@ public class InitProtocol implements Runnable {
 	private void initFileManager(){
 		String[] elements = this.metaData.split("\\|");
 
-		System.out.println("InitProtocol: elements"+elements.length+"\n"+Arrays.toString(elements));
+		System.out.println("InitProtocol: elements "+elements.length);//+"\n"+Arrays.toString(elements));
 
 		String[] attrs;
 		for(int i = 0; i < elements.length; i++){
 			attrs = elements[i].split(" ");
 
-			System.out.println("InitProtocol: Attrs - "+Arrays.toString(attrs));
+			//System.out.println("InitProtocol: Attrs - "+Arrays.toString(attrs));
 			if(attrs[0].compareTo("FILE") == 0)
 				this.parseFile(attrs);
 
 			if(attrs[0].compareTo("CHUNK") == 0)
 				this.parseChunk(attrs);
 		}
+
+		ArrayList<ServerChunk> chunksOnDisk = this.server.getFileManager().readSWD();
+		for(ServerChunk chunk : chunksOnDisk){
+			this.currChunk = chunk;
+			this.sendStoreMsg();
+		}
 	}
-	
+
+	private void sendStoreMsg(){
+		String msg = this.getStoredMsg();
+		TwinMulticastSocket socket = this.server.getMCsocket();
+		DatagramPacket packet = new DatagramPacket(msg.getBytes(), msg.length(), socket.getGroup(), socket.getPort());
+		
+		//Send response
+		try{
+			socket.send(packet);
+		}
+		catch(IOException e){
+			this.printErrMsg("Unable to send STORED message");
+		}
+		catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+			System.err.println("MCsocket packet received is insecure");
+		}
+	}
+
+	private String getStoredMsg(){
+		return "STORED 1.0 "+this.server.getId()+" "+this.currChunk.toMsg();
+	}
+
 	private void printErrMsg(String err){
-		//System.err.printlncurrData("Error backing up file "+this.fileName+": "+err);
-	}
+		System.err.println("InitProtocol: "+err);
+	}	
 	
 	public void meta(int blockNr, String data){
 

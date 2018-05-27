@@ -74,7 +74,7 @@ public class ControlProtocol implements Runnable {
 		else
 			this.blockNr = header[3].trim();
 
-		System.out.println("ControlProtocol: blockNr "+ this.blockNr);
+		//System.out.println("ControlProtocol: blockNr "+ this.blockNr);
 		
 		if(this.senderId.compareTo(""+this.server.getId()) == 0){
 			return true;
@@ -271,10 +271,10 @@ public class ControlProtocol implements Runnable {
 	}
 
 	private void processGetMeta(){
-		System.out.println("TEST");
+		//System.out.println("TEST");
 		int blockNr = Integer.parseInt(this.blockNr);
 		String meta = this.server.getFileManager().getMetaBlock(blockNr);
-		System.out.println("ControlProtocol: Block "+meta);
+		//System.out.println("ControlProtocol: Block "+meta);
 		this.sendMetaMsg(meta);
 	}
 

@@ -36,7 +36,7 @@ public class FileManager{
 		synchronized(this.files){
 			this.files.add(newFile);
 		}
-		System.out.println(this.toString());
+		//System.out.println(this.toString());
 		return true;
 	}
 
@@ -49,7 +49,7 @@ public class FileManager{
 		synchronized(this.chunks){
 			this.chunks.add(newChunk);
 		}
-		System.out.println(this.toString());
+		//System.out.println(this.toString());
 		return true;
 	}
 	
@@ -68,6 +68,17 @@ public class FileManager{
 		chunk.incRepDeg(peerId);
 		this.chunks.add(chunk);
 		System.out.println(this.toString());
+	}
+
+	private synchronized ServerChunk setChunkOnDisk(String chunkId, long size){
+		for(ServerChunk chunk : this.chunks){
+			if(chunk.getId().compareTo(chunkId) == 0){
+				chunk.setOnDisk(true);
+				chunk.setSize(size);
+				return chunk;
+			}
+		}
+		return null;
 	}
 	
 	public synchronized void incChunkRepDeg(String chunkId, String fileEncryptedId, int repDeg, int peerId){
@@ -363,6 +374,47 @@ public class FileManager{
 		}
 		
 		return outStream;
+	}
+
+
+	public void cleanSWD(){
+
+		File[] files = this.WDir.toFile().listFiles();
+		for(File file : files){
+			if(!file.isDirectory())
+				file.delete();
+		}
+	}
+
+	public ArrayList<ServerChunk> readSWD(){
+
+		System.out.println(this.toString());
+
+		File[] files = this.WDir.toFile().listFiles();
+
+		String fileName;
+		String chunkId;
+		long size;
+
+		ServerChunk chunk;
+		ArrayList<ServerChunk> chunksOnDisk = new ArrayList<ServerChunk>();
+		for(int i=0;i<files.length;i++){
+
+			fileName = files[i].getName();
+			chunkId = fileName.split("\\.")[0];
+			size = files[i].length();
+
+			chunk = this.setChunkOnDisk(chunkId,size);
+			if(chunk != null){
+				//System.out.println("ContainsChunk");
+				chunksOnDisk.add(chunk);
+			}
+			else{
+				this.deleteSWDFile(fileName);
+			}
+		}
+
+		return chunksOnDisk;
 	}
 	
 	public void deleteSWDFile(String fileName){

@@ -136,8 +136,7 @@ public class Server implements ServerInterf {
 		this.removedThreads = new ConcurrentHashMap<String,Runnable>();
 		
 	    //Create Server Working Directory
-		this.createSWD(args);
-		this.fileManager.setWDir(this.SWD);
+		this.createSWD();
 		
 		this.pool = new ThreadPoolExecutor(5,30,10,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(10));
 		
@@ -146,7 +145,7 @@ public class Server implements ServerInterf {
 
 		configureTCPSocket(args);
 
-		System.out.println("Server set up and running");
+		printMsg("Set up and running");
 
 		try{
 			this.initThread = new InitProtocol(this);
@@ -199,14 +198,14 @@ public class Server implements ServerInterf {
         }
 	}
 	
-	private void createSWD(String args[]){
+	private void createSWD(){
 		try{
 			this.SWD = Paths.get("server"+this.id);
 			Files.createDirectory(this.SWD);
 		}
 		catch(IOException e){}
-		
-		this.deleteSWDContent();
+
+		this.fileManager.setWDir(this.SWD);
 	}
 	
 	private void startListenerThreads(){
@@ -256,6 +255,10 @@ public class Server implements ServerInterf {
 	
 	public void backup(SecretKeySpec clientKey, String fileName, int repDegree) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException{
 		this.printRequest("BACKUP "+fileName+" "+repDegree);
+
+		if(!ready)
+			return;
+
 		Runnable handler = new BackUpProtocol(this, fileName, repDegree, clientKey);
 		this.requests.put("BACKUP"+ServerFile.toId(fileName), handler);
 		this.pool.execute(handler);
@@ -270,6 +273,9 @@ public class Server implements ServerInterf {
 	
 	public void restore(SecretKeySpec clientKey, String fileName) throws RemoteException, IOException,NoSuchPaddingException, NoSuchAlgorithmException {
 		this.printRequest("RESTORE "+fileName);
+
+		if(!ready)
+			return;
 		// TODO: verify this
 		String fileId = ServerFile.toId(fileName);
 		Runnable handler = new RestoreProtocol(this, fileName, fileId, clientKey);
@@ -279,11 +285,19 @@ public class Server implements ServerInterf {
 	
 	public void delete(SecretKeySpec clientKey, String fileName) throws NoSuchPaddingException, NoSuchAlgorithmException{
 		this.printRequest("DELETE "+fileName);
+
+		if(!ready)
+			return;
+
 		this.pool.execute(new DeleteProtocol(this, fileName, clientKey));
 	}
 	
 	public String reclaim(SecretKeySpec clientKey, int mem) throws NoSuchPaddingException, NoSuchAlgorithmException{
 		this.printRequest("RECLAIM "+mem);
+		
+		if(!ready)
+			return "Server not ready";
+
 		String answer = "";
 		if(this.authenticateAdmin(clientKey)){
 			this.pool.execute(new ReclaimProtocol(this, mem, clientKey));
@@ -326,6 +340,7 @@ public class Server implements ServerInterf {
 
 	public String list(SecretKeySpec clientKey){
 		this.printRequest("LIST");
+
 		ArrayList<ServerFile> files = this.fileManager.getFiles();
 		return this.listFiles(clientKey,files);
 	}
@@ -341,6 +356,10 @@ public class Server implements ServerInterf {
 		return answer;
 	}
 	
+	public void printMsg(String msg){
+		System.out.println("Server: "+msg);
+	}
+
 	private void printRequest(String request){
 		System.out.print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
 		System.out.println("----------------------");
@@ -394,6 +413,7 @@ public class Server implements ServerInterf {
 	
 	public ServerSocket getTCPSocket() { return tcpSocket; }
 
+	/*
 	private void deleteSWDContent(){
 		File[] files = this.SWD.toFile().listFiles();
 		for(File file : files){
@@ -401,6 +421,7 @@ public class Server implements ServerInterf {
 				file.delete();
 		}
 	}
+	*/
 	
 	class MCListener implements Runnable{
 		private Server server;

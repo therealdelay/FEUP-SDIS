@@ -132,10 +132,14 @@ public class ServerChunk{
 		this.decRepDeg(peerId);
 	}
 
+	public String toMsg(){
+		return this.fileEncryptedId+" "+this.fileId+" "+this.chunkNr+" "+this.repDeg;
+	}
+
 	public String toMeta(){
 		String peersStr = this.peers.stream().map(Object::toString).collect(Collectors.joining(","));
 		return "CHUNK "+this.id+" "+this.fileEncryptedId+" "+peersStr+" "+this.repDeg;
-	}
+	}	
 
 	public String toString(){
 		String newLine = System.lineSeparator();
