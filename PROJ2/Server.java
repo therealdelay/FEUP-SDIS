@@ -187,7 +187,6 @@ public class Server implements ServerInterf {
 				System.exit(1);
 			}
 		}
-		System.out.println(4);
 		try{
             ServerInterf proxy = (ServerInterf) UnicastRemoteObject.exportObject(this, 0);
 			String name = Integer.toString(this.id);
