@@ -44,7 +44,6 @@ public class TestApp {
 			key = Arrays.copyOf(key, 16);
 
 			clientKey = new SecretKeySpec(key, "AES");
-			
 
 		} catch(NoSuchAlgorithmException | UnsupportedEncodingException e){
 			System.err.println("Error creating client key");

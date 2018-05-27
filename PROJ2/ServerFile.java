@@ -158,12 +158,13 @@ public class ServerFile implements Comparable<ServerFile>{
 		try {
 			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 			cipher.init(Cipher.DECRYPT_MODE, secretKey);
-			cipher.doFinal(this.encryptedId.getBytes());
+			byte[] decodedKey = Base64.getDecoder().decode(this.encryptedId);
+			cipher.doFinal(decodedKey);
 			return true;
 			
 		}
 		catch(NoSuchAlgorithmException | InvalidKeyException | IllegalBlockSizeException | NoSuchPaddingException | BadPaddingException e){
-			System.err.println("Error decrypting file "+this.pathName);
+			System.err.println("Error decrypting file "+this.pathName + " " + e);
 		}
 
 		return false;
