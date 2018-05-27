@@ -30,23 +30,29 @@ public class FileManager{
 	}
 	
 	public boolean addFile(ServerFile newFile){
-		/*if(this.containsFile(newFile.getId()))
-			return false;
 		
-		synchronized(this.files){
-			this.files.add(newFile);
-		}
-		//System.out.println(this.toString());
-		return true;*/
 		if(this.containsFile(newFile.getId())){
 			this.showPreviousVersions(newFile);
 		}
 		
+		if(this.containsVersion(newFile)){
+			System.out.println("This version is already stored");
+			return false;
+		}
+
 		synchronized(this.files){
 			this.files.add(newFile);
 		}
 		System.out.println(this.toString());
 		return true;
+	}
+
+	public boolean containsVersion(ServerFile file){
+		for(ServerFile f : this.files){
+			if(file.getLastModifiedDate() == f.getLastModifiedDate())
+				return true;
+		}
+		return false;
 	}
 
 	public ArrayList<String> showPreviousVersions(ServerFile newFile){

@@ -127,6 +127,7 @@ public class StoreChunk implements Runnable {
 		}
 		
 		fileManager.addChunk(chunkId,this.encryptedFileId,this.chunkBody.length,Integer.parseInt(this.repDeg),this.server.getId());
+		System.out.println("O CHUNK CHAMA-SE " + chunkId);
 		System.out.println("Chunk nr "+this.chunkNr+" of file "+this.fileId+" saved");
 	}
 	
