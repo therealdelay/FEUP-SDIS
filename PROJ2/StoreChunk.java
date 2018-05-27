@@ -41,7 +41,7 @@ public class StoreChunk implements Runnable {
 		
 		FileManager fileManager = this.server.getFileManager();
 		
-		String chunkId = ServerChunk.toId(this.fileId,Integer.parseInt(this.chunkNr));
+		String chunkId = ServerChunk.toId(this.encryptedFileId,Integer.parseInt(this.chunkNr));
 		
 		if(!this.server.getFileManager().addFile(this.file))
 			System.out.println("File already added");

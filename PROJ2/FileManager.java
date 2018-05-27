@@ -30,16 +30,40 @@ public class FileManager{
 	}
 	
 	public boolean addFile(ServerFile newFile){
-		if(this.containsFile(newFile.getId()))
+		/*if(this.containsFile(newFile.getId()))
 			return false;
 		
 		synchronized(this.files){
 			this.files.add(newFile);
 		}
 		//System.out.println(this.toString());
+		return true;*/
+		if(this.containsFile(newFile.getId())){
+			this.showPreviousVersions(newFile);
+		}
+		
+		synchronized(this.files){
+			this.files.add(newFile);
+		}
+		System.out.println(this.toString());
 		return true;
 	}
 
+	public ArrayList<String> showPreviousVersions(ServerFile newFile){
+		ArrayList<String> versions = new ArrayList<String>();
+		System.out.println("Previous versions of file " + newFile.getPathName());
+		int i = 0;
+		System.out.println("Version | Date");
+		System.out.println("------------------------------");
+		for(ServerFile file : this.files){
+			i++;
+			System.out.printf("%-7d | %-30s", i, newFile.getLastModifiedDateStr());
+			versions.add(newFile.getLastModifiedDateStr());
+			System.out.println();
+		}
+
+		return versions;
+	}
 
 	public boolean addChunk(ServerChunk newChunk){
 		
