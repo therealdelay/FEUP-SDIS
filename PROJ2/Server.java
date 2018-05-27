@@ -178,7 +178,6 @@ public class Server implements ServerInterf {
 			this.rmiRegistry = LocateRegistry.createRegistry(port);
 		}
 		catch(Exception e){
-						
 			try{
 				this.rmiRegistry = LocateRegistry.getRegistry(port);
 			}
@@ -188,7 +187,7 @@ public class Server implements ServerInterf {
 				System.exit(1);
 			}
 		}
-		
+		System.out.println(4);
 		try{
             ServerInterf proxy = (ServerInterf) UnicastRemoteObject.exportObject(this, 0);
 			String name = Integer.toString(this.id);
@@ -196,7 +195,7 @@ public class Server implements ServerInterf {
 		} catch (Exception e) {
 			System.err.println("Unable to set up RMI");
 			System.exit(1);
-        }
+		}
 	}
 	
 	private void createSWD(String args[]){
