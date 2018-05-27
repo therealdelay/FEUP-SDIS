@@ -19,12 +19,12 @@ Client:
 java TestApp localhost/1 echo
 
 -Backup
-java TestApp localhost/1 dinnywannagotohogwarts backup files/lorem.txt 2
+java TestApp localhost/1 dinnywannagotohogwarts backup files/bar.gif 2
 java TestApp localhost/1 dakuoblivion backup big.zip 2
 java TestApp localhost/3 pedrokings23 backup big.zip 2
 
 -Restore
-java TestApp localhost/1 dinnywannagotohogwarts restore files/lorem.txt
+java TestApp localhost/1 dinnywannagotohogwarts restore files/bar.gif
 
 -Delete
 java TestApp localhost/1 dinnywannagotohogwarts delete bar.gif

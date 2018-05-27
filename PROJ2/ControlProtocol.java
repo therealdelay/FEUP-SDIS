@@ -66,7 +66,8 @@ public class ControlProtocol implements Runnable {
 				if(header.length > 6)
 					this.repDeg = header[6];
 			}
-  		if (header.length > 7) {
+  			if (header.length > 7) {
+				
 				this.addressToSend = header[6];
 				this.portToSend = Integer.parseInt(header[7]);
 			}
@@ -215,11 +216,6 @@ public class ControlProtocol implements Runnable {
 		this.server.restoreThreads.put("CHUNK"+this.fileId+"_"+this.chunkNr, this);
 	}
 
-	private int getRandomTime(){
-		Random r = new Random();
-   		int n = r.nextInt(400);
-     	return n;
-	}
 	
 	private void sendChunkMsg(byte[] buf){
 		byte[] msg = this.getChunkMsg(buf);
@@ -332,6 +328,12 @@ public class ControlProtocol implements Runnable {
 			System.out.println(e);
 		}
 	}
+
+	private int getRandomTime(){
+		Random r = new Random();
+   		int n = r.nextInt(400);
+     	return n;
+	}
 	
 	public void notifyPutChunk(String fileId, String chunkNr){
 		if(this.fileId.compareTo(fileId)==0 && this.chunkNr.compareTo(chunkNr) == 0);
@@ -341,7 +343,6 @@ public class ControlProtocol implements Runnable {
 	public void notifyGetChunk(String fileId, String chunkNr) {
 		if(this.fileId.compareTo(fileId)==0 && this.chunkNr.compareTo(chunkNr) == 0); {
 			this.receivedChunk = true;
-			System.out.println("NOTIFIED, STOPPING");
 		}
 	}
 }

@@ -27,12 +27,13 @@ public class RestoreProtocol implements Runnable {
 	private boolean received = false;
 	private byte[] buf;
 	private ReentrantLock lock;
-	private int currOffset = 0;
 
 	private SecretKeySpec secretKey;
 	private Cipher cipher;
 
 	private FileOutputStream outStream;
+
+	private byte[] totalFile;
 
 	public RestoreProtocol(Server server, String fileName, String fileId, SecretKeySpec clientKey)
 			throws IOException, UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchPaddingException {
@@ -50,10 +51,10 @@ public class RestoreProtocol implements Runnable {
 		FileManager fileManager = this.server.getFileManager();
 		int totalChunks = fileManager.getFileTotalChunks(this.fileName);
 		System.out.println("Total Chunks: " + totalChunks);
+		outStream = fileManager.getOutStream(ServerFile.toRelativeName(this.fileName));
 		
-		setOutputStream(fileManager);
+		//setOutputStream(fileManager);
 		
-		this.sendGetChunkMsg();
 		Socket connectionSocket;
 
 		for (int i = 0; i < totalChunks; i++) {
@@ -76,22 +77,16 @@ public class RestoreProtocol implements Runnable {
 				System.out.println("Error on closing TCP Socket.");
 				return;
 			}
-
+			
+		}
+		
+		try {
+			outStream.write(totalFile);
+		} catch (IOException e) {
+			System.out.println("Error writing to file : " + e);
 		}
 
 		this.exit();
-	}
-
-	private void setOutputStream(FileManager fileManager) {
-
-		try{
-			File outFile = new File(fileManager.getSWDFilePathName(ServerFile.toRelativeName(this.fileName)));
-			outFile.createNewFile();
-			this.outStream = new FileOutputStream(outFile, true);
-		}
-		catch(IOException e){
-			System.err.println("Error creating file to save chunk : " + e);
-		}
 	}
 
 	private boolean receiveChunk(Socket connectionSocket) {
@@ -102,18 +97,23 @@ public class RestoreProtocol implements Runnable {
 			byte[] buffer = new byte[Server.MAX_CHUNK_SIZE_ENCRYPTED];
 			byte[] total = null;
 			while ((count = in.read(buffer)) > 0) {
-				total = new byte[count];
+				byte[] tmp = new byte[count];
+				System.arraycopy(buffer, 0, tmp, 0, count);
+			
+				byte[] decrypted = decryptBody(tmp);
 
-				System.arraycopy(buffer, 0, total, 0, count);
-				System.out.println("Reading " + count);
+				if (totalFile != null) {
+					total = new byte[decrypted.length + totalFile.length];
+
+					System.arraycopy(totalFile, 0, total, 0, totalFile.length);
+					System.arraycopy(decrypted, 0, total, totalFile.length, decrypted.length);
+
+					totalFile = total;
+				} else {
+					totalFile = decrypted;
+				}
 			}
-
-			System.out.println("offset " + currOffset);
-			byte[] decrypted = decryptBody(total);
-
-			outStream.write(decrypted);
-			currOffset += total.length;
-
+			
 			in.close();
 
 		} catch (IOException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException e) {
@@ -123,10 +123,10 @@ public class RestoreProtocol implements Runnable {
 
 		this.received = false;
 		return true;
-
 	}
 
 	private void sendGetChunkMsg() {
+		System.out.println("\nSending Get Chunk for chunk nr " + this.currChunk+ "\n");
 		String msg = this.getGetChunkMsg();
 		TwinMulticastSocket socket = this.server.getMCsocket();
 		DatagramPacket packet = new DatagramPacket(msg.getBytes(), msg.length(), socket.getGroup(), socket.getPort());
@@ -182,17 +182,8 @@ public class RestoreProtocol implements Runnable {
 
 	public byte[] decryptBody(byte[] body)
 			throws IOException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
-
-		if (body == null) {
-
-			System.out.println("wat");
-
-		}
-
-		System.out.println("DECRYPT: "
-
-				+ body.length);
-
+		
+		System.out.println("DECRYPT: "+ body.length);
 		this.cipher.init(Cipher.DECRYPT_MODE, this.secretKey);
 		return this.cipher.doFinal(body);
 	}

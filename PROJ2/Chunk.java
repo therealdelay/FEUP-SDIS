@@ -56,9 +56,7 @@ public class Chunk implements Runnable {
 	private boolean parseRequest(){
 		String msg = new String(this.buf);
 
-		System.out.println(msg);
 		String[] parts = msg.split("\r\n");
-		System.out.println(parts.length);
 		
 		//Parse header elements
 		String[] header = parts[0].split(" ");
