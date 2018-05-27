@@ -31,11 +31,11 @@ public class Server implements ServerInterf {
 	private Registry rmiRegistry;
 	
 	private TwinMulticastSocket MCsocket;
-	private Thread MClistener;
+	private MCListener MClistener;
 	private TwinMulticastSocket MDBsocket;
-	private Thread MDBlistener;
+	private MDBListener MDBlistener;
 	private TwinMulticastSocket MDRsocket;
-	private Thread MDRlistener;
+	private MDRListener MDRlistener;
 
 	private ServerSocket tcpSocket; 
 
@@ -44,7 +44,7 @@ public class Server implements ServerInterf {
 
 	public boolean ready = false;
 
-	public InitProtocol initThread;
+	public UpProtocol initThread;
 	private ConcurrentHashMap<String,Runnable> requests;
 	public ConcurrentHashMap<String,Runnable> restoreThreads;
 	public ConcurrentHashMap<String,Runnable> removedThreads;
@@ -78,6 +78,12 @@ public class Server implements ServerInterf {
 		}
 			
 		Server server = new Server(args);
+
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+		    public void run() {
+		       	server.exit();
+		    }
+		});
 	}
 	
 	public static void printUsage(){
@@ -139,6 +145,7 @@ public class Server implements ServerInterf {
 		this.createSWD();
 		
 		this.pool = new ThreadPoolExecutor(5,30,10,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(10));
+		this.pool.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
 		
 		//Start multicast channels listener threads
 		this.startListenerThreads();
@@ -146,15 +153,14 @@ public class Server implements ServerInterf {
 		configureTCPSocket(args);
 
 		printMsg("Set up and running");
-
-		try{
-			this.initThread = new InitProtocol(this);
+		/*
 		}
 		catch(Exception e){
 			System.err.println("Failed to initialize initial protocol");
 			this.disconnect();
-		}
-
+			System.exit(1);
+		}*/
+		this.initThread = new UpProtocol(this);
 		this.pool.execute(this.initThread);
 	}
 	
@@ -191,6 +197,7 @@ public class Server implements ServerInterf {
 			String name = Integer.toString(this.id);
             this.rmiRegistry.rebind(name, proxy);
 		} catch (Exception e) {
+			e.printStackTrace();
 			System.err.println("Unable to set up RMI");
 			System.exit(1);
 		}
@@ -207,14 +214,21 @@ public class Server implements ServerInterf {
 	}
 	
 	private void startListenerThreads(){
-		this.MClistener = new Thread(new MCListener(this));
-		this.MDBlistener = new Thread(new MDBListener(this));
-		this.MDRlistener = new Thread(new MDRListener(this));
-		this.MClistener.start();
-		this.MDBlistener.start();
-		this.MDRlistener.start();
+		this.MClistener = new MCListener(this);
+		this.MDBlistener = new MDBListener(this);
+		this.MDRlistener = new MDRListener(this);
+		(new Thread(this.MClistener)).start();
+		(new Thread(this.MDBlistener)).start();
+		(new Thread(this.MDRlistener)).start();
+	}
+
+	private void terminateListenerThreads(){
+		this.MClistener.terminate();
+		this.MDBlistener.terminate();
+		this.MDRlistener.terminate();
 	}
 	
+
 	private void disconnect(){
 		
 		if(this.MCsocket != null)
@@ -226,6 +240,9 @@ public class Server implements ServerInterf {
 		if(this.MDRsocket != null)
 			this.MDRsocket.close();
 		
+
+		//TODO: fix this
+		/*
 		if(this.rmiRegistry != null){
 			try{
 				this.rmiRegistry.unbind("server");
@@ -233,11 +250,44 @@ public class Server implements ServerInterf {
 				UnicastRemoteObject.unexportObject(this.rmiRegistry, true);
 			}
 			catch(Exception e){
+				e.printStackTrace();
 				System.err.println("Error disconnecting Server");
+				System.exit(1);
 			}
 		}
-		
-		System.exit(1);
+		*/
+	}
+
+	private void exit(){
+
+		this.printMsg("Shutting down...");
+
+		try{
+			Thread down = new Thread(new DownProtocol(this));
+			down.start();
+			down.join();
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+
+		this.pool.shutdown();
+
+		while(!this.pool.isShutdown()){
+			try{
+				System.out.println("Sleeping...");
+				Thread.sleep(10000);
+			}
+			catch(InterruptedException e){
+				System.err.println("Interrupted sleep");
+			}
+		}
+
+		this.terminateListenerThreads();
+		this.disconnect();
+
+		this.printMsg("Shut down");
+		//System.exit(0);
 	}
 
 	private boolean authenticateAdmin(SecretKeySpec clientKey){
@@ -353,6 +403,12 @@ public class Server implements ServerInterf {
 
 		return answer;
 	}
+
+	public void shutdown(SecretKeySpec clientKey){
+		this.printRequest("SHUTDOWN");
+		if(authenticateAdmin(clientKey))
+			System.exit(0);
+	};
 	
 	public void printMsg(String msg){
 		System.out.println("Server: "+msg);
@@ -410,44 +466,41 @@ public class Server implements ServerInterf {
 	}
 	
 	public ServerSocket getTCPSocket() { return tcpSocket; }
-
-	/*
-	private void deleteSWDContent(){
-		File[] files = this.SWD.toFile().listFiles();
-		for(File file : files){
-			if(!file.isDirectory())
-				file.delete();
-		}
-	}
-	*/
 	
 	class MCListener implements Runnable{
 		private Server server;
+		private volatile boolean running = true;
 		
 		public MCListener(Server server){
 			this.server = server;
 		}
 		
+		public void terminate(){
+			running = false;
+		}
 	
 		@Override
 		public void run() {
-			while(true){
+			while(running){
 				byte buf[] = new byte[300];
 				DatagramPacket packet = new DatagramPacket(buf,buf.length);
 		
 				try{
 					MCsocket.receive(packet);
 				}
-				catch(IOException e){	
-					System.err.println("Error receiving MCsocket packet");
+				catch(IOException e){
+					if(running)
+						System.err.println("Error receiving MCsocket packet");
 				}
 				catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
-					System.err.println("MCsocket packet received is insecure: " + e);
+					if(running)
+						System.err.println("MCsocket packet received is insecure: " + e);
 				}
 				
-				
-				System.out.println("Packet received at MCsocket: " + new String(packet.getData()).trim() + "\n");
-				pool.execute(new ControlProtocol(this.server, packet.getData()));
+				if(running){
+					System.out.println("Packet received at MCsocket: " + new String(packet.getData()).trim() + "\n");
+					pool.execute(new ControlProtocol(this.server, packet.getData()));
+				}
 			}
 		}
 
@@ -455,15 +508,20 @@ public class Server implements ServerInterf {
 	
 	class MDBListener implements Runnable{
 		private Server server;
+		private volatile boolean running = true;
 		
 		public MDBListener(Server server){
 			this.server = server;
+		}
+
+		public void terminate(){
+			running = false;
 		}
 	
 		@Override
 		public void run() {
 			
-			while(true){
+			while(running){
 				byte buf[] = new byte[Server.MAX_BUFFER_SIZE];
 				DatagramPacket packet = new DatagramPacket(buf,buf.length);
 				
@@ -471,13 +529,17 @@ public class Server implements ServerInterf {
 					MDBsocket.receive(packet);
 				}
 				catch(IOException e){
-					System.err.println("Error receiving MDBsocket packet");
+					if(running)
+						System.err.println("Error receiving MDBsocket packet");
 				}
 				catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
-					System.err.println("MDBsocket packet received is insecure: " + e);
+					if(running)
+						System.err.println("MDBsocket packet received is insecure: " + e);
 				}
-				
-				pool.execute(new StoreChunk(this.server, packet.getData(), packet.getLength()));
+
+				if(running){
+					pool.execute(new StoreChunk(this.server, packet.getData(), packet.getLength()));
+				}
 			}
 		}
 		
@@ -486,14 +548,20 @@ public class Server implements ServerInterf {
 	
 	class MDRListener implements Runnable{
 		private Server server;
+		private volatile boolean running = true;
 		
 		public MDRListener(Server server){
 			this.server = server;
 		}
+
+		public void terminate(){
+			running = false;
+		}
 	
 		@Override
 		public void run() {
-			while(true){
+
+			while(running){
 				byte buf[] = new byte[Server.MAX_BUFFER_SIZE];
 				DatagramPacket packet = new DatagramPacket(buf,buf.length);
 		
@@ -501,14 +569,19 @@ public class Server implements ServerInterf {
 					MDRsocket.receive(packet);
 				}
 				catch(IOException e){
-					System.err.println("Error receiving MDRsocket packet");
+					if(running)
+						System.err.println("Error receiving MDRsocket packet");
 				}
 				catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
-					System.err.println("MDRsocket packet received is insecure: " + e);
+					if(running)
+						System.err.println("MDRsocket packet received is insecure: " + e);
 				}
-				
-				pool.execute(new Chunk(this.server, packet.getData(), packet.getLength()));
+
+				if(running){
+					pool.execute(new Chunk(this.server, packet.getData(), packet.getLength()));
+				}
 			}
+
 		}
 	}
 }

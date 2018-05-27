@@ -142,6 +142,16 @@ public class FileManager{
 		return null;
 	}
 
+	public synchronized ArrayList<ServerChunk> getChunks(){
+		ArrayList<ServerChunk> chunksOnDisk = new ArrayList<ServerChunk>();
+		for(ServerChunk chunk : this.chunks){
+			if(chunk.onDisk())
+				chunksOnDisk.add(new ServerChunk(chunk));
+		}
+
+		return chunksOnDisk;
+	}
+
 	public synchronized ArrayList<ServerFile> getFiles(){
 			return this.files.stream().map(ServerFile::new).collect(toCollection(ArrayList::new));
 	}

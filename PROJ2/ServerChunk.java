@@ -53,6 +53,17 @@ public class ServerChunk{
 		this.peers = peers;
 		this.onDisk = false;
 	}
+
+	public ServerChunk(ServerChunk chunk){
+		this.id = chunk.getId();
+		this.fileId = chunk.getFileId();
+		this.fileEncryptedId = chunk.getFileEncryptedId();
+		this.chunkNr = chunk.getChunkNr();
+		this.size = chunk.getSize();
+		this.repDeg = chunk.getReplicationDeg();
+		this.peers = chunk.getPeers();
+		this.onDisk = chunk.onDisk();
+	}
 	
 	public static String toId(String fileId, int chunkNr){
  		String[] parts = fileId.split("\\.");
@@ -65,7 +76,7 @@ public class ServerChunk{
 		if(!this.peers.contains(peerId))
 			peers.add(peerId);
 		
-		String state = "Curr peers: "+Arrays.toString(this.peers.toArray());
+		//String state = "Curr peers: "+Arrays.toString(this.peers.toArray());
 		//System.out.println(state);
 	}
 		
@@ -77,8 +88,16 @@ public class ServerChunk{
 			return false;
 	}
 		
+	public ArrayList<Integer> getPeers(){
+		return this.peers;
+	}
+
 	public int getPerceivedRepDeg(){
 		return this.peers.size();
+	}
+
+	public int getReplicationDeg(){
+		return this.repDeg;
 	}
 	
 	public String getId(){
@@ -133,7 +152,7 @@ public class ServerChunk{
 	}
 
 	public String toMsg(){
-		return this.fileEncryptedId+" "+this.fileId+" "+this.chunkNr+" "+this.repDeg;
+		return this.fileEncryptedId+" "+this.fileId+" "+this.chunkNr;
 	}
 
 	public String toMeta(){

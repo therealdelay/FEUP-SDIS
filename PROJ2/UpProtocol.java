@@ -14,7 +14,7 @@ import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 
-public class InitProtocol implements Runnable {
+public class UpProtocol implements Runnable {
 	
 	private final static int[] TIMEOUT_VALS = {1,2,4,8,16};
 	private final static int MAX_TRIES = 5;
@@ -28,7 +28,7 @@ public class InitProtocol implements Runnable {
 
 	private ServerChunk currChunk;
 
-	public InitProtocol(Server server) throws IOException, UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchPaddingException
+	public UpProtocol(Server server)
 	{
 		this.server = server;
 	}
@@ -65,7 +65,7 @@ public class InitProtocol implements Runnable {
 	
 	private boolean getMetaBlock(){
 		
-		for(int i = 0; i < InitProtocol.MAX_TRIES; i++){
+		for(int i = 0; i < UpProtocol.MAX_TRIES; i++){
 			byte[] msg = this.getGetMetaMsg().getBytes();
 			TwinMulticastSocket socket = this.server.getMCsocket();
 			DatagramPacket packet = new DatagramPacket(msg, msg.length, socket.getGroup(), socket.getPort());
@@ -81,7 +81,7 @@ public class InitProtocol implements Runnable {
 			}
 			
 			try{
-				Thread.sleep(InitProtocol.TIMEOUT_VALS[i]*1000);
+				Thread.sleep(UpProtocol.TIMEOUT_VALS[i]*1000);
 			}
 			catch(InterruptedException e){
 				this.printErrMsg("Interrupted sleep");
@@ -119,8 +119,10 @@ public class InitProtocol implements Runnable {
 		ArrayList<Integer> peers = new ArrayList<Integer>();
 
 		String[] peersStr = attrs[3].split(",");
-		for(int i=0;i<peersStr.length;i++)
-			peers.add(Integer.parseInt(peersStr[i]));
+		for(int i=0;i<peersStr.length;i++){
+			if(peersStr[i].compareTo("") != 0)
+				peers.add(Integer.parseInt(peersStr[i]));
+		}
 
 		int replicationDeg = Integer.parseInt(attrs[4]);
 
@@ -131,13 +133,13 @@ public class InitProtocol implements Runnable {
 	private void initFileManager(){
 		String[] elements = this.metaData.split("\\|");
 
-		System.out.println("InitProtocol: elements "+elements.length);//+"\n"+Arrays.toString(elements));
+		//System.out.println("UpProtocol: elements "+elements.length);//+"\n"+Arrays.toString(elements));
 
 		String[] attrs;
 		for(int i = 0; i < elements.length; i++){
 			attrs = elements[i].split(" ");
 
-			//System.out.println("InitProtocol: Attrs - "+Arrays.toString(attrs));
+			//System.out.println("UpProtocol: Attrs - "+Arrays.toString(attrs));
 			if(attrs[0].compareTo("FILE") == 0)
 				this.parseFile(attrs);
 
@@ -170,16 +172,16 @@ public class InitProtocol implements Runnable {
 	}
 
 	private String getStoredMsg(){
-		return "STORED 1.0 "+this.server.getId()+" "+this.currChunk.toMsg();
+		return "STORED "+this.server.getVersion()+" "+this.server.getId()+" "+this.currChunk.toMsg()+" "+this.currChunk.getReplicationDeg();
 	}
 
 	private void printErrMsg(String err){
-		System.err.println("InitProtocol: "+err);
+		System.err.println("UpProtocol: "+err);
 	}	
 	
 	public void meta(int blockNr, String data){
 
-		System.out.println("InitProtocol: data "+data+" "+data.length());
+		//System.out.println("UpProtocol: data "+data+" "+data.length());
 		if(blockNr == this.currBlock){
 			if(!this.newData){
 				this.newData = true;

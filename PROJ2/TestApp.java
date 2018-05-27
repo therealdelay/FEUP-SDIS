@@ -237,6 +237,18 @@ public class TestApp {
 			System.err.println("Failed to state");
 		}
 	}
+
+	private void shutdown(){
+		this.connect();
+		
+		System.out.println("Shutting down");
+		try{
+			this.proxy.shutdown(this.clientKey);
+		}
+		catch(Exception e){
+			//System.err.println("Failed to shutdown");
+		}
+	}
 	
 	private void processRequest(){
 		
@@ -269,13 +281,9 @@ public class TestApp {
 				this.state();
 				break;
 			
-			/*
-			case "EXIT":
-				this.disconnect();
-				this.pool.shutdownNow();
-				System.exit(0);
+			case "SHUTDOWN":
+				this.shutdown();
 				break;
-			*/
 				
 			default:
 				System.out.println("Request not recognized");

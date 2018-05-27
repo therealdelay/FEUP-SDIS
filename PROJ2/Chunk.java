@@ -77,24 +77,21 @@ public class Chunk implements Runnable {
 			System.arraycopy(this.buf, headerLength, this.chunkBody, 0, bodyLength);
 		}
 		else{
-
 			this.blockNr = header[3];
 
 			if(parts.length == 1)
 				this.metaData = "";
 			else
 				this.metaData = parts[1];
-			System.out.println(this.metaData);
 		}
 		
 		if(this.senderId.compareTo(""+this.server.getId()) != 0){
-			System.out.println("Packet received at MDBsocket: " + Arrays.toString(header));
+			//System.out.println("Packet received at MDBsocket: " + Arrays.toString(header));
 			return false;
 		}
 		else
 			return true;
 	}
-
 
 	private void processChunk(){
 		ConcurrentHashMap<String,Runnable> restoreThreads = this.server.getRestoreThreads(); 
@@ -103,9 +100,8 @@ public class Chunk implements Runnable {
 		if(handlerRestore != null){ 
 		  System.out.println("ControlProtocol: Notifying Restore GetChunk\n"); 
 		  handlerRestore.notifyGetChunk(this.fileId, this.chunkNr); 
-		} 
+		}
 	}
-
 
 	private void processMeta(){
 		this.server.initThread.meta(Integer.parseInt(this.blockNr),this.metaData);

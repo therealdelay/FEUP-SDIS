@@ -17,4 +17,5 @@ import javax.crypto.spec.SecretKeySpec;
 	public String reclaim(SecretKeySpec clientKey, int mem) throws RemoteException, IOException, NoSuchAlgorithmException, NoSuchPaddingException;
 	public String list(SecretKeySpec clientKey) throws RemoteException;
 	public String state(SecretKeySpec clientKey) throws RemoteException;
+	public void shutdown(SecretKeySpec clientKey) throws RemoteException;
 }
