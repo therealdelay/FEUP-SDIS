@@ -236,7 +236,12 @@ public class TestApp {
 		
 		System.out.println("Deleting file " + this.args[0] + " - version " + intOption + ".");
 		try{
-			this.proxy.delete(clientKey, this.args[0], intOption);
+			String lastModified = new String();
+			if(intOption >= 1)
+				lastModified = versions.get(intOption-1);
+			else
+				lastModified = "";
+			this.proxy.delete(clientKey, this.args[0], intOption, lastModified);
 		}
 		catch(Exception e){
 			System.err.println("Failed to delete");

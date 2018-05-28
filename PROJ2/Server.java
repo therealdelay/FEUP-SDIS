@@ -28,6 +28,7 @@ public class Server implements ServerInterf {
 	private int port;
 	private String address;
 	public static int deleteVersion;
+	public static String lastModified;
 	
 	private Registry rmiRegistry;
 	
@@ -333,15 +334,16 @@ public class Server implements ServerInterf {
 		this.pool.execute(handler);
 	}
 	
-	public void delete(SecretKeySpec clientKey, String fileName, int version) throws NoSuchPaddingException, NoSuchAlgorithmException{
+	public void delete(SecretKeySpec clientKey, String fileName, int version, String lastModified) throws NoSuchPaddingException, NoSuchAlgorithmException{
 		this.printRequest("DELETE "+fileName);
 
 		if (!ready)
 			return;
 
 		this.deleteVersion = version;
+		this.lastModified = lastModified;
 
-		this.pool.execute(new DeleteProtocol(this, fileName, clientKey, version));
+		this.pool.execute(new DeleteProtocol(this, fileName, clientKey, version, lastModified));
 	}
 
 	public ArrayList<String> showVersions(String fileName) throws RemoteException{
