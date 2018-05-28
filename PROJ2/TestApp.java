@@ -4,6 +4,8 @@ import java.rmi.*;
 import java.io.*;
 import java.net.*;
 import java.util.Arrays;
+import java.util.*;
+import java.util.Scanner;
 
 import javax.crypto.spec.SecretKeySpec;
 
@@ -142,10 +144,40 @@ public class TestApp {
 			return;
 		
 		this.connect();
-		
+
+		ArrayList<String> versions = new ArrayList<String>();
+
+		try{
+			versions = this.proxy.showVersions(this.args[0]);
+		}
+		catch (Exception e) {
+			System.err.println("Failed to delete");
+		}
+
+		int intOption = 0;
+
+		System.out.println(versions.size());
+		if(versions.size() > 0){
+			System.out.println("Previous versions of file " + this.args[0]);
+			System.out.println("Version | Date");
+			System.out.println("------------------------------");
+			for(int i=0; i < versions.size(); i++){
+				System.out.printf("%-7d | %-30s", i+1, versions.get(i));
+				System.out.println();
+			}
+
+			System.out.println("Which version do you want to restore?");
+			System.out.print("> ");
+
+			Scanner reader = new Scanner(System.in);
+			intOption = reader.nextInt();
+			
+			System.out.println("Restore version " + intOption);
+			
+		}		
 		System.out.println("Restoring file " + this.args[0] + ".");
 		try{
-			this.proxy.restore(clientKey, this.args[0]);
+			this.proxy.restore(clientKey, this.args[0], intOption);
 		}
 		catch(Exception e){
 			System.err.println("Failed to restore");
@@ -167,16 +199,51 @@ public class TestApp {
 			return;
 		
 		this.connect();
-		
-		System.out.println("Deleting file " + this.args[0] + ".");
+
+		ArrayList<String> versions = new ArrayList<String>();
+
 		try{
-			this.proxy.delete(clientKey, this.args[0]);
+			versions = this.proxy.showVersions(this.args[0]);
+		}
+		catch (Exception e) {
+			System.err.println("Failed to delete");
+		}
+
+		int intOption = 0;
+
+		System.out.println(versions.size());
+		if(versions.size() > 0){
+			System.out.println("Previous versions of file " + this.args[0]);
+			System.out.println("Version | Date");
+			System.out.println("------------------------------");
+			for(int i=0; i < versions.size(); i++){
+				System.out.printf("%-7d | %-30s", i+1, versions.get(i));
+				System.out.println();
+			}
+
+			System.out.println("Which version do you want to delete?(Write '0' to delete all)");
+			System.out.print("> ");
+
+			Scanner reader = new Scanner(System.in);
+			intOption = reader.nextInt();
+			if(intOption == 0){
+				System.out.println("Delete all versions");
+			}
+			else{			
+				System.out.println("Delete version " + intOption);
+			}
+		}
+		
+		System.out.println("Deleting file " + this.args[0] + " - version " + intOption + ".");
+		try{
+			this.proxy.delete(clientKey, this.args[0], intOption);
 		}
 		catch(Exception e){
 			System.err.println("Failed to delete");
 		}
 		System.out.println("Delete processed.");
 	}
+
 	
 	private boolean checkReclaimArgs(){
 		if(this.args.length != 1){
