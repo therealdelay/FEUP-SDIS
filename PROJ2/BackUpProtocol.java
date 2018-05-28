@@ -75,7 +75,6 @@ public class BackUpProtocol implements Runnable {
 		}
 		
 		this.serverFile = new ServerFile(this.fileName, this.replicationDeg, file.lastModified(), this.secretKey, this.server.getId());
-		System.out.println("File date " + file.lastModified());
 		
 		//Get file id
 		this.fileId = serverFile.getId();

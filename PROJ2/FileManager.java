@@ -259,7 +259,6 @@ public class FileManager{
 				}
 				
 				filePath = serverFile.getPathName();
-				System.out.println("REMOVE THIS SHIT" + serverFile.getLastModifiedDateStr());
 				fileId = serverFile.getId();
 				//delete if user is authorized
 				try {
@@ -298,21 +297,32 @@ public class FileManager{
 						i--;
 					}
 					catch(Exception e) {
-						System.out.println("The client ins't authorize to delete this file");
+						System.out.println("The client isn't authorize to delete this file");
 					}
 				}
 			}
 			this.toString();
 		}
 
+		System.out.println("LEEL " + chunksToRemove.size());
+		System.out.println("DATE " + lastModified);
+		
+		if(chunksToRemove.size() == 0)
+			return;
+
 		File file;
 		String fileName;
 		for(int i = 0; i < chunksToRemove.size(); i++){
+			
 			fileName = chunksToRemove.get(i)+".chunk";
 			System.out.println("Deleting file: "+fileName);
 			file = new File(this.getSWDFilePathName(fileName));
-			System.out.println(file);
-			file.delete();
+			
+
+			if(file.delete())
+				System.out.println("File " + fileName + " deleted.");
+			else
+				System.out.println("File " + fileName + " not deleted.");
 		}
 	}
 
