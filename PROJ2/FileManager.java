@@ -128,32 +128,11 @@ public class FileManager{
 		this.chunks.add(chunk);
 	}
 	
-	public synchronized void incFileChunkRepDeg(String fileId, int chunkNr, int peerId){
-		ServerFile file;
-		for(int i = 0; i < this.files.size(); i++){
-			file = this.files.get(i);
-			if(file.getId().compareTo(fileId) == 0){
-				file.incChunksRepDeg(chunkNr,peerId);
-				return;
-			}
-		}
-	}
 	
 	public synchronized boolean decFileChunkRepDeg(String fileId, int chunkNr, int peerId){
 		
-		ServerFile file;
-		for(int i = 0; i < this.files.size(); i++){
-			file = this.files.get(i);
-			System.out.println("\nDEC REP DEGREE: " + file.getId() + " :::: " + fileId + 
-			" :: " + file.getEncryptedId().compareTo(fileId) + " \n");
-			if(file.getId().compareTo(fileId) == 0){
-				file.decChunksRepDeg(chunkNr,peerId);
-			}
-		}
-		
 		String chunkId = ServerChunk.toId(fileId,chunkNr);
 		for(ServerChunk chunk : this.chunks){
-			System.out.println("\nCHUNK ID: " + chunk.getId() + " :: " + chunkId + "\n");
 			if(chunk.getId().compareTo(chunkId) == 0)
 				return (chunk.decRepDeg(peerId) && chunk.onDisk());
 		}

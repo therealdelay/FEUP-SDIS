@@ -308,14 +308,14 @@ public class Server implements ServerInterf {
 			return;
 
 		Runnable handler = new BackUpProtocol(this, fileName, repDegree, clientKey);
-		this.requests.put("BACKUP"+ServerFile.toId(fileName), handler);
+		//this.requests.put("BACKUP"+ServerFile.toId(fileName), handler);
 		this.pool.execute(handler);
 		
 	}
 	
 	public void backupChunk(String fileId, int chunkNr){
 		Runnable handler = new BackUpProtocol(this, fileId, chunkNr, 0);
-		this.requests.put("BACKUP"+fileId+chunkNr, handler);
+		//this.requests.put("BACKUP"+fileId+chunkNr, handler);
 		this.pool.execute(handler);
 	}
 	
