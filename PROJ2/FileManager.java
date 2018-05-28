@@ -79,12 +79,11 @@ public class FileManager{
 		synchronized(this.chunks){
 			this.chunks.add(newChunk);
 		}
-		//System.out.println(this.toString());
+
 		return true;
 	}
 	
 	public synchronized void addChunk(String chunkId, String fileEncryptedId, int size, int repDeg, int peerId){
-		this.usedMem += size;
 		
 		for(ServerChunk chunk : this.chunks){
 			if(chunk.getId().compareTo(chunkId) == 0){
@@ -94,7 +93,7 @@ public class FileManager{
 			}
 		}
 		
-		ServerChunk chunk = new ServerChunk(chunkId, fileEncryptedId, size,repDeg);
+		ServerChunk chunk = new ServerChunk(chunkId,fileEncryptedId,size,repDeg);
 		chunk.incRepDeg(peerId);
 		this.chunks.add(chunk);
 		System.out.println(this.toString());
@@ -321,6 +320,15 @@ public class FileManager{
 		
 		return false;
 	}
+
+	public boolean addMem(int size){
+		if(this.usedMem+size <= Server.MAX_MEM){
+			this.usedMem += size;
+			return true;
+		}
+
+		return false;
+	}
 	
 	public synchronized boolean containsChunk(String chunkId){
 		ServerChunk chunk;
@@ -434,6 +442,7 @@ public class FileManager{
 			chunk = this.setChunkOnDisk(chunkId,size);
 			if(chunk != null){
 				//System.out.println("ContainsChunk");
+				this.usedMem += size;
 				chunksOnDisk.add(chunk);
 			}
 			else{
@@ -505,10 +514,40 @@ public class FileManager{
 			return "";
 	}
 
+	private String getMemBar(){
+		float usedCapacity = ((float) this.usedMem)/Server.MAX_MEM;	
+		int length = 50;
+		int halfLength = (int) length/2;
+		int blocks = (int) (usedCapacity*length);
+
+		System.out.println(blocks);
+
+		String bar = "|";
+		for(int i=0;i<length;i++){
+			if(i <= blocks)
+				bar += "█";
+			else
+				bar += " ";
+		}
+		bar+="|"+System.lineSeparator();
+
+		/*
+		for(int i=0;i<halfLength/2;i++)
+			bar += " ";
+
+		DecimalFormat df = new DecimalFormat("#.00");
+		bar += df.format(usedCapacity)+"%";
+		*/
+
+		return bar;
+	}
+
 	public synchronized String toString(){
 		String lineSep = System.lineSeparator();
 		String doubleLineSep = lineSep+lineSep;
-		return "Memory used: "+this.usedMem+" of "+Server.MAX_MEM+lineSep+
+		String memBar = this.getMemBar();
+
+		return "Memory used: "+this.usedMem+" of "+Server.MAX_MEM+lineSep+memBar+lineSep+
 			   "Files:"+lineSep+
 			   this.files.stream().map(Object::toString).collect(Collectors.joining(doubleLineSep))+doubleLineSep+
 			   "Chunks:"+lineSep+
