@@ -29,17 +29,15 @@ public class ServerFile implements Comparable<ServerFile>{
 	//private FileTime creationDate;
 	private int replicationDeg;
 	private int initPeerId;
-	private ArrayList<ArrayList<Integer>> chunksRepDeg;
 	
 	public ServerFile(String fileName, int replicationDeg, long lastModified, SecretKeySpec secretKey, int peerId){
 		this.pathName = ServerFile.toPathName(fileName);
-		this.id = ServerFile.toId(fileName);
+		this.id = ServerFile.toId(fileName, lastModified);
 		this.encryptedId = ServerFile.toEncryptedId(fileName, secretKey);
 		this.lastModified = lastModified;
 		//this.readCreationDate();
 		this.replicationDeg = replicationDeg;
 		this.initPeerId = peerId;
-		this.chunksRepDeg = new ArrayList<ArrayList<Integer>>();
 	}
 	
 	public ServerFile(String fileId, String encryptedFileID, String pathName, long lastModified, int replicationDeg, int peerId){
@@ -50,7 +48,6 @@ public class ServerFile implements Comparable<ServerFile>{
 		//this.readCreationDate();
 		this.replicationDeg = replicationDeg;
 		this.initPeerId = peerId;
-		this.chunksRepDeg = new ArrayList<ArrayList<Integer>>();
 	}
 
 
@@ -62,7 +59,6 @@ public class ServerFile implements Comparable<ServerFile>{
 		//this.readCreationDate();
 		this.replicationDeg = file.getReplicationDeg();
 		this.initPeerId = file.getInitPeerId();
-		this.chunksRepDeg =  new ArrayList<ArrayList<Integer>>();
 	}
 
 	/*
@@ -109,9 +105,9 @@ public class ServerFile implements Comparable<ServerFile>{
 		return file.getAbsolutePath();
 	}
 	
-	public static String toId(String fileName){
+	public static String toId(String fileName, long lastModified){
 
-		String path = ServerFile.toPathName(fileName);
+		String path = ServerFile.toPathName(fileName) + "_" + lastModified;
 
 		try{
 			
@@ -177,28 +173,6 @@ public class ServerFile implements Comparable<ServerFile>{
 	public int getInitPeerId(){
 		return this.initPeerId;
 	}
-
-	public ArrayList<ArrayList<Integer>> getChunksRepDeg(){
-		return this.chunksRepDeg;
-	}
-		
-	public void incChunksRepDeg(int chunkNr, int peerId){
-		while(this.chunksRepDeg.size() <= chunkNr){
-			this.chunksRepDeg.add(new ArrayList<Integer>());
-		}
-		ArrayList<Integer> peers = this.chunksRepDeg.get(chunkNr);
-		if(!peers.contains(peerId))
-			peers.add(peerId);
-	}
-
-	public boolean decChunksRepDeg(int chunkNr, int peerId){
-		if(this.chunksRepDeg.size() == 0)
-			return false;
-		
-		ArrayList<Integer> peers = this.chunksRepDeg.get(chunkNr);
-		peers.remove(Integer.valueOf(peerId));
-		return peers.size() < this.replicationDeg;
-	}
 	
 	public String toMsg(){
 		return this.encryptedId+" "+this.id+" "+this.pathName+" "+this.lastModified+" "+this.initPeerId;
@@ -221,9 +195,9 @@ public class ServerFile implements Comparable<ServerFile>{
 		String lineSep = System.lineSeparator();
 		return  "	PathName: "+this.pathName+lineSep+
 				"	ID: "+this.id+lineSep+
+				"	EncryptedID: "+this.encryptedId+lineSep+
 				"	InitPeer: "+this.initPeerId+lineSep+
-				"	Expected replication degree: "+this.replicationDeg+lineSep+
-				"	Current chunks replication degree: "+ this.chunksRepDeg.stream().map(peers -> Integer.toString(peers.size())).collect(Collectors.joining(", "));
+				"	Expected replication degree: "+this.replicationDeg;
 	}
 
 	@Override

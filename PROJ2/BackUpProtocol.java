@@ -224,6 +224,7 @@ public class BackUpProtocol implements Runnable {
 		return false;
 	}
 	
+	/*
 	private void removeRequest(){
 		ConcurrentHashMap<String,Runnable> requests = this.server.getRequests();
 		if(this.chunkNr != -1)
@@ -231,6 +232,7 @@ public class BackUpProtocol implements Runnable {
 		else
 			requests.remove("BACKUP"+this.fileId);
 	}
+	*/
 	
 	private void exit(){
 		
@@ -243,7 +245,7 @@ public class BackUpProtocol implements Runnable {
 			}
 		}
 		
-		this.removeRequest();
+		//this.removeRequest();
 		
 		if(this.chunkNr != -1)
 			System.out.println("Chunk "+this.chunkNr+" of file "+this.fileName+" backed up with success!");
@@ -261,15 +263,10 @@ public class BackUpProtocol implements Runnable {
 			this.printErrMsg("Unable to close input stream");
 		}
 		
-		this.removeRequest();
+		//this.removeRequest();
 	}
 	
 	private void printErrMsg(String err){
 		System.err.println("Error backing up file "+this.fileName+": "+err);
-	}
-	
-	public void stored(int id, int chunk){
-		System.out.println("Id: "+ id + " " + "Chunk: " + chunk + "\n");
-		this.server.getFileManager().incFileChunkRepDeg(this.fileId,chunk,id);
 	}
 }

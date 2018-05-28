@@ -309,14 +309,14 @@ public class Server implements ServerInterf {
 			return;
 
 		Runnable handler = new BackUpProtocol(this, fileName, repDegree, clientKey);
-		this.requests.put("BACKUP"+ServerFile.toId(fileName), handler);
+		//this.requests.put("BACKUP"+ServerFile.toId(fileName), handler);
 		this.pool.execute(handler);
 		
 	}
 	
 	public void backupChunk(String fileId, int chunkNr){
 		Runnable handler = new BackUpProtocol(this, fileId, chunkNr, 0);
-		this.requests.put("BACKUP"+fileId+chunkNr, handler);
+		//this.requests.put("BACKUP"+fileId+chunkNr, handler);
 		this.pool.execute(handler);
 	}
 	
@@ -326,9 +326,10 @@ public class Server implements ServerInterf {
 		if(!ready)
 			return;
 		// TODO: verify this
-		String fileId = ServerFile.toId(fileName);
+		File file = new File(fileName);
+		String fileId = ServerFile.toId(fileName, file.lastModified());
 		Runnable handler = new RestoreProtocol(this, fileName, fileId, clientKey);
-		this.requests.put("RESTORE"+ServerFile.toId(fileName), handler);
+		this.requests.put("RESTORE"+ServerFile.toId(fileName, file.lastModified()), handler);
 		this.pool.execute(handler);
 	}
 	
@@ -345,7 +346,8 @@ public class Server implements ServerInterf {
 
 	public ArrayList<String> showVersions(String fileName) throws RemoteException{
 		ArrayList<String> versions = new ArrayList<String>();
-		versions = this.fileManager.showPreviousVersions(this.fileManager.getFile(ServerFile.toId(fileName)));
+		File file = new File(fileName);
+		versions = this.fileManager.showPreviousVersions(this.fileManager.getFile(ServerFile.toId(fileName, file.lastModified())));
 		return versions;
 	}
 	

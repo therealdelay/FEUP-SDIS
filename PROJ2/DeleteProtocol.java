@@ -31,7 +31,8 @@ public class DeleteProtocol implements Runnable {
 	public DeleteProtocol(Server server, String fileName, SecretKeySpec clientKey, int version){
 		this.server = server;
 		this.fileName = fileName;
-		this.fileId = ServerFile.toId(fileName);
+		File file = new File(fileName);
+		this.fileId = ServerFile.toId(fileName, file.lastModified());
 		this.fileEncryptedId = ServerFile.toEncryptedId(fileName, secretKey);
 		this.secretKey = clientKey;
 		this.version = version;
