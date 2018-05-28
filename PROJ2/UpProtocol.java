@@ -133,13 +133,10 @@ public class UpProtocol implements Runnable {
 	private void initFileManager(){
 		String[] elements = this.metaData.split("\\|");
 
-		//System.out.println("UpProtocol: elements "+elements.length);//+"\n"+Arrays.toString(elements));
-
 		String[] attrs;
 		for(int i = 0; i < elements.length; i++){
 			attrs = elements[i].split(" ");
 
-			//System.out.println("UpProtocol: Attrs - "+Arrays.toString(attrs));
 			if(attrs[0].compareTo("FILE") == 0)
 				this.parseFile(attrs);
 
@@ -181,7 +178,6 @@ public class UpProtocol implements Runnable {
 	
 	public void meta(int blockNr, String data){
 
-		//System.out.println("UpProtocol: data "+data+" "+data.length());
 		if(blockNr == this.currBlock){
 			if(!this.newData){
 				this.newData = true;

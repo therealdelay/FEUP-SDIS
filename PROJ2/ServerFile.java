@@ -26,7 +26,6 @@ public class ServerFile implements Comparable<ServerFile>{
 	private String encryptedId;
 	private String pathName;
 	private long lastModified;
-	//private FileTime creationDate;
 	private int replicationDeg;
 	private int initPeerId;
 	
@@ -35,7 +34,6 @@ public class ServerFile implements Comparable<ServerFile>{
 		this.id = ServerFile.toId(fileName, lastModified);
 		this.encryptedId = ServerFile.toEncryptedId(fileName, secretKey);
 		this.lastModified = lastModified;
-		//this.readCreationDate();
 		this.replicationDeg = replicationDeg;
 		this.initPeerId = peerId;
 	}
@@ -45,7 +43,6 @@ public class ServerFile implements Comparable<ServerFile>{
 		this.encryptedId = encryptedFileID; 
 		this.pathName = pathName;
 		this.lastModified = lastModified;
-		//this.readCreationDate();
 		this.replicationDeg = replicationDeg;
 		this.initPeerId = peerId;
 	}
@@ -56,24 +53,9 @@ public class ServerFile implements Comparable<ServerFile>{
 		this.encryptedId = file.getEncryptedId(); 
 		this.pathName = file.getPathName();
 		this.lastModified = file.getLastModifiedDate();
-		//this.readCreationDate();
 		this.replicationDeg = file.getReplicationDeg();
 		this.initPeerId = file.getInitPeerId();
 	}
-
-	/*
-	public void readCreationDate(){
-		Path file = Paths.get(this.pathName);
-		try{
-			BasicFileAttributes attr = Files.getFileAttributeView(file,BasicFileAttributeView.class).readAttributes();
-			this.creationDate = attr.creationTime();
-			//System.out.println("Creation Time: "+this.creationDate);
-		}
-		catch(Exception e){
-			this.creationDate = null;
-			e.printStackTrace();
-		}
-	}*/
 	
 	public String getPathName(){
 		return this.pathName;

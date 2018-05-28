@@ -107,7 +107,7 @@ public class FileManager{
 		for(ServerChunk chunk : this.chunks){
 			if(chunk.getId().compareTo(chunkId) == 0){
 				chunk.addToDisk(peerId,size);
-				System.out.println(this.toString());
+				//System.out.println(this.toString());
 				return;
 			}
 		}
@@ -115,7 +115,7 @@ public class FileManager{
 		ServerChunk chunk = new ServerChunk(chunkId,fileEncryptedId,size,repDeg);
 		chunk.incRepDeg(peerId);
 		this.chunks.add(chunk);
-		System.out.println(this.toString());
+		//System.out.println(this.toString());
 	}
 
 	private synchronized ServerChunk setChunkOnDisk(String chunkId, long size){
@@ -303,7 +303,6 @@ public class FileManager{
 			fileName = chunksToRemove.get(i)+".chunk";
 			System.out.println("Deleting file: "+fileName);
 			file = new File(this.getSWDFilePathName(fileName));
-			System.out.println(file);
 			file.delete();
 		}
 	}
@@ -322,10 +321,8 @@ public class FileManager{
 	public synchronized boolean ownsChunk(String chunkId){
 
 		String fileId = chunkId.split("_")[0];
-		System.out.println(fileId);
 
 		for(ServerFile file : this.files){
-			System.out.println(file.getInitPeerId());
 			if(file.getId().compareTo(fileId) == 0 && file.getInitPeerId() == this.serverId)
 				return true;
 		}
@@ -365,7 +362,7 @@ public class FileManager{
 	public int getFileTotalChunks(String fileName){
 		File file = new File(fileName);
 		float size = (float) file.length();
-		System.out.println("Size: "+size);
+		//System.out.println("Size: "+size);
 
 		int total = (int) size/Server.MAX_CHUNK_SIZE+1;
 		return total;
@@ -435,7 +432,7 @@ public class FileManager{
 
 	public ArrayList<ServerChunk> readSWD(){
 
-		System.out.println(this.toString());
+		//System.out.println(this.toString());
 
 		File[] files = this.WDir.toFile().listFiles();
 

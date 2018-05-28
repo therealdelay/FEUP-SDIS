@@ -133,7 +133,7 @@ public class ControlProtocol implements Runnable {
 		}
 		
 		String fileName = chunkId+".chunk";
-		System.out.println("filename " + fileName);
+		//System.out.println("filename " + fileName);
 		FileInputStream inStream = fileManager.getInStream(fileName);
 		
 		//Read

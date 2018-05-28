@@ -54,7 +54,7 @@ public class ReclaimProtocol implements Runnable {
 		for(int i = 0; i < this.deletedChunks.size(); i++){
 			chunk = this.deletedChunks.get(i);
 			this.sendRemovedMsg(chunk.getFileId(), chunk.getFileEncryptedId(), chunk.getChunkNr());
-			System.out.println("Sent REMOVED for chunk: "+chunk.getId() +" "+ chunk.getFileEncryptedId());
+			System.out.println("Sent REMOVED for chunk: "+chunk.getId());
 		}
 	}
 	
