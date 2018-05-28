@@ -71,6 +71,26 @@ public class FileManager{
 		return versions;
 	}
 
+	public ArrayList<String> showPreviousVersionsWithFileName(String fileName){
+		ArrayList<String> versions = new ArrayList<String>();
+		System.out.println("Previous versions of file " + fileName);
+		int i = 0;
+		System.out.println("Version | Date");
+		System.out.println("------------------------------");
+		String fullPath = ServerFile.toPathName(fileName);
+		for(ServerFile file : this.files){
+			i++;
+			System.out.println("FODA-SE " + file.getPathName());
+			if(fullPath.equals(file.getPathName())){
+				System.out.printf("%-7d | %-30s", i, file.getLastModifiedDateStr());
+				versions.add(file.getLastModifiedDateStr());
+				System.out.println();
+			}
+		}
+
+		return versions;
+	}
+
 	public boolean addChunk(ServerChunk newChunk){
 		
 		if(this.containsChunk(newChunk.getId()))

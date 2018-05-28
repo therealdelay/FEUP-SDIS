@@ -346,8 +346,9 @@ public class Server implements ServerInterf {
 
 	public ArrayList<String> showVersions(String fileName) throws RemoteException{
 		ArrayList<String> versions = new ArrayList<String>();
-		File file = new File(fileName);
-		versions = this.fileManager.showPreviousVersions(this.fileManager.getFile(ServerFile.toId(fileName, file.lastModified())));
+		versions = this.fileManager.showPreviousVersionsWithFileName(fileName);
+		// File file = new File(fileName);
+		// versions = this.fileManager.showPreviousVersions(this.fileManager.getFile(ServerFile.toId(fileName, file.lastModified())));
 		return versions;
 	}
 	
