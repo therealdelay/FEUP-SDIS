@@ -28,6 +28,7 @@ public class Server implements ServerInterf {
 	private int port;
 	private String address;
 	public static int deleteVersion;
+	public static String lastModified;
 	
 	private Registry rmiRegistry;
 	
@@ -320,32 +321,46 @@ public class Server implements ServerInterf {
 		this.pool.execute(handler);
 	}
 	
-	public void restore(SecretKeySpec clientKey, String fileName, int option) throws RemoteException, IOException,NoSuchPaddingException, NoSuchAlgorithmException {
+	public void restore(SecretKeySpec clientKey, String fileName, int option, String lastModified) throws RemoteException, IOException,NoSuchPaddingException, NoSuchAlgorithmException {
 		this.printRequest("RESTORE "+fileName);
 
 		if(!ready)
 			return;
 		// TODO: verify this
-		String fileId = ServerFile.toId(fileName);
+
+		this.lastModified = lastModified;
+
+		long lastModifiedLong = 0;
+
+		for(ServerFile file: this.fileManager.getFiles()){
+			if(file.getLastModifiedDateStr().equals(lastModified)){
+				lastModifiedLong = file.getLastModifiedDate();
+			}
+		}
+
+		String fileId = ServerFile.toId(fileName, lastModifiedLong);
 		Runnable handler = new RestoreProtocol(this, fileName, fileId, clientKey);
-		this.requests.put("RESTORE"+ServerFile.toId(fileName), handler);
+		this.requests.put("RESTORE"+ServerFile.toId(fileName, lastModifiedLong), handler);
 		this.pool.execute(handler);
 	}
 	
-	public void delete(SecretKeySpec clientKey, String fileName, int version) throws NoSuchPaddingException, NoSuchAlgorithmException{
+	public void delete(SecretKeySpec clientKey, String fileName, int version, String lastModified) throws NoSuchPaddingException, NoSuchAlgorithmException{
 		this.printRequest("DELETE "+fileName);
 
 		if (!ready)
 			return;
 
 		this.deleteVersion = version;
+		this.lastModified = lastModified;
 
-		this.pool.execute(new DeleteProtocol(this, fileName, clientKey, version));
+		this.pool.execute(new DeleteProtocol(this, fileName, clientKey, version, lastModified));
 	}
 
 	public ArrayList<String> showVersions(String fileName) throws RemoteException{
 		ArrayList<String> versions = new ArrayList<String>();
-		versions = this.fileManager.showPreviousVersions(this.fileManager.getFile(ServerFile.toId(fileName)));
+		versions = this.fileManager.showPreviousVersionsWithFileName(fileName);
+		// File file = new File(fileName);
+		// versions = this.fileManager.showPreviousVersions(this.fileManager.getFile(ServerFile.toId(fileName, file.lastModified())));
 		return versions;
 	}
 	

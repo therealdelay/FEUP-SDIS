@@ -71,6 +71,26 @@ public class FileManager{
 		return versions;
 	}
 
+	public ArrayList<String> showPreviousVersionsWithFileName(String fileName){
+		ArrayList<String> versions = new ArrayList<String>();
+		System.out.println("Previous versions of file " + fileName);
+		int i = 0;
+		System.out.println("Version | Date");
+		System.out.println("------------------------------");
+		String fullPath = ServerFile.toPathName(fileName);
+		for(ServerFile file : this.files){
+			i++;
+			System.out.println("FODA-SE " + file.getPathName());
+			if(fullPath.equals(file.getPathName())){
+				System.out.printf("%-7d | %-30s", i, file.getLastModifiedDateStr());
+				versions.add(file.getLastModifiedDateStr());
+				System.out.println();
+			}
+		}
+
+		return versions;
+	}
+
 	public boolean addChunk(ServerChunk newChunk){
 		
 		if(this.containsChunk(newChunk.getId()))
@@ -161,7 +181,7 @@ public class FileManager{
 	}
 
 	public synchronized ArrayList<ServerFile> getFiles(){
-			return this.files.stream().map(ServerFile::new).collect(toCollection(ArrayList::new));
+		return this.files.stream().map(ServerFile::new).collect(toCollection(ArrayList::new));
 	}
 	
 	public synchronized String getFilePath(String fileId){
@@ -214,7 +234,7 @@ public class FileManager{
 		return chunksToRemove;
 	}
 	
-	public void removeAllChunks(String fileId, String secretKey, int version){ 
+	public void removeAllChunks(String fileId, String secretKey, int version, String lastModified){ 
 		Cipher cipher; 
 		SecretKeySpec key;
 		
@@ -230,36 +250,31 @@ public class FileManager{
 		
 		//Delete file if exists
 		synchronized(this.files){
-			int countVersions = 0;
 			ServerFile serverFile;
 			for(int i = 0; i < this.files.size(); i++){
 				serverFile = this.files.get(i);
-				if((serverFile.getId().compareTo(fileId) == 0) && (countVersions < version-1)){
-					if(version != 0){
-						if(countVersions != version-1){
-							countVersions++;
-							continue;
-						}
-					}
-					//delete if user is authorized
-					try {
-						
-						cipher.init(Cipher.DECRYPT_MODE, key);
-						byte[] encryptedFileName = Base64.getDecoder().decode(serverFile.getEncryptedId());
-						cipher.doFinal(encryptedFileName);
+				if(serverFile.getLastModifiedDateStr().equals(lastModified)) {
+					System.out.println("REMOVE THIS SHIT" + serverFile.getLastModifiedDateStr());
+				}
+				
+				//delete if user is authorized
+				try {
+
+					cipher.init(Cipher.DECRYPT_MODE, key);
+					byte[] encryptedFileName = Base64.getDecoder().decode(serverFile.getEncryptedId());
+					cipher.doFinal(encryptedFileName);
 
 						//it can decrypt
-						this.files.remove(i);
-						System.out.println("Count " + countVersions);
+					this.files.remove(i);
 						// break;
-					}
-					catch(Exception e){
-						System.out.println("The client isn't authorize to delete this file");
-					}
+				}
+				catch(Exception e){
+					System.out.println("The client isn't authorize to delete this file");
 				}
 			}
 		}
-		
+
+
 		//Delete chunks of fileId
 		ArrayList<String> chunksToRemove = new ArrayList<String>();
 		synchronized(this.chunks){
@@ -272,7 +287,7 @@ public class FileManager{
 						cipher.init(Cipher.DECRYPT_MODE, key);
 						byte[] encryptedFileName = Base64.getDecoder().decode(chunk.getFileEncryptedId());
 						cipher.doFinal(encryptedFileName);
-	
+
 						this.chunks.remove(i);
 						this.usedMem -= chunk.getSize();
 						chunksToRemove.add(chunk.getId());
@@ -285,7 +300,7 @@ public class FileManager{
 			}
 			this.toString();
 		}
-		
+
 		File file;
 		String fileName;
 		for(int i = 0; i < chunksToRemove.size(); i++){
@@ -296,7 +311,7 @@ public class FileManager{
 		}
 	}
 
-		
+
 	public synchronized boolean containsFile(String fileId){
 		ServerFile file;
 		for(int i = 0; i < this.files.size(); i++){
@@ -306,18 +321,18 @@ public class FileManager{
 		}
 		return false;
 	}
-	
+
 	public synchronized boolean ownsChunk(String chunkId){
-		
+
 		String fileId = chunkId.split("_")[0];
 		System.out.println(fileId);
-		
+
 		for(ServerFile file : this.files){
 			System.out.println(file.getInitPeerId());
 			if(file.getId().compareTo(fileId) == 0 && file.getInitPeerId() == this.serverId)
 				return true;
 		}
-		
+
 		return false;
 	}
 
@@ -339,7 +354,7 @@ public class FileManager{
 		}
 		return false;
 	}
-		
+
 	public synchronized int getPerceivedRepDeg(String chunkId){
 		ServerChunk chunk;
 		for(int i = 0; i < this.chunks.size(); i++){
@@ -349,16 +364,16 @@ public class FileManager{
 		}
 		return -1;
 	}
-	
+
 	public int getFileTotalChunks(String fileName){
 		File file = new File(fileName);
 		float size = (float) file.length();
 		System.out.println("Size: "+size);
-		
+
 		int total = (int) size/Server.MAX_CHUNK_SIZE+1;
 		return total;
 	}
-	
+
 	public FileInputStream getFileInStream(String filePath){
 		FileInputStream inStream = null;
 		try{
@@ -366,14 +381,14 @@ public class FileManager{
 			inStream = new FileInputStream(inFile);
 		}
 		catch(IOException e){}
-		
+
 		return inStream;
 	}
-	
+
 	public String getSWDFilePathName(String fileName){
 		return this.WDir.toString()+"/"+fileName;
 	}
-	
+
 	public FileOutputStream getFileOutStream(String filePath){
 		FileOutputStream outStream = null;
 		try{
@@ -382,10 +397,10 @@ public class FileManager{
 			outStream = new FileOutputStream(outFile);
 		}
 		catch(IOException e){}
-		
+
 		return outStream;
 	}
-	
+
 	public FileInputStream getInStream(String fileName){
 		FileInputStream inStream = null;
 		try{
@@ -393,10 +408,10 @@ public class FileManager{
 			inStream = new FileInputStream(inFile);
 		}
 		catch(IOException e){}
-		
+
 		return inStream;
 	}
-	
+
 	public FileOutputStream getOutStream(String fileName){
 		FileOutputStream outStream = null;
 		try{
@@ -407,7 +422,7 @@ public class FileManager{
 		catch(IOException e){
 			System.err.println("Error creating file to save chunk : " + e);
 		}
-		
+
 		return outStream;
 	}
 
@@ -452,12 +467,12 @@ public class FileManager{
 
 		return chunksOnDisk;
 	}
-	
+
 	public void deleteSWDFile(String fileName){
 		File file = new File(this.getSWDFilePathName(fileName));
 		file.delete();
 	}
-	
+
 	public synchronized long getUsedMem(){
 		return this.usedMem;
 	}
