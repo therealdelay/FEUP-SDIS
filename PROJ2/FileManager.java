@@ -80,7 +80,6 @@ public class FileManager{
 		String fullPath = ServerFile.toPathName(fileName);
 		for(ServerFile file : this.files){
 			i++;
-			System.out.println("FODA-SE " + file.getPathName());
 			if(fullPath.equals(file.getPathName())){
 				System.out.printf("%-7d | %-30s", i, file.getLastModifiedDateStr());
 				versions.add(file.getLastModifiedDateStr());
@@ -254,13 +253,7 @@ public class FileManager{
 			ServerFile serverFile;
 			for(int i = 0; i < this.files.size(); i++){
 				serverFile = this.files.get(i);
-				if(!serverFile.getLastModifiedDateStr().equals(lastModified)) {
-					continue;
-				}
-				
-				filePath = serverFile.getPathName();
-				System.out.println("REMOVE THIS SHIT" + serverFile.getLastModifiedDateStr());
-				fileId = serverFile.getId();
+
 				//delete if user is authorized
 				try {
 
@@ -277,7 +270,6 @@ public class FileManager{
 				}
 			}
 		}
-
 
 		//Delete chunks of fileId
 		ArrayList<String> chunksToRemove = new ArrayList<String>();
