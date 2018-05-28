@@ -177,7 +177,12 @@ public class TestApp {
 		}		
 		System.out.println("Restoring file " + this.args[0] + ".");
 		try{
-			this.proxy.restore(clientKey, this.args[0], intOption);
+			String lastModified = new String();
+			if(intOption >= 1)
+				lastModified = versions.get(intOption-1);
+			else
+				lastModified = "";
+			this.proxy.restore(clientKey, this.args[0], intOption, lastModified);
 		}
 		catch(Exception e){
 			System.err.println("Failed to restore");

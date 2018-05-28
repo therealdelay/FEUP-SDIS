@@ -13,7 +13,7 @@ import javax.crypto.spec.SecretKeySpec;
  public interface ServerInterf extends Remote {
 	public String echo(String msg) throws RemoteException;
 	public void backup(SecretKeySpec clientKey, String fileName, int repDegree) throws RemoteException, IOException, NoSuchAlgorithmException, NoSuchPaddingException;
-	public void restore(SecretKeySpec clientKey, String fileName, int option) throws RemoteException, IOException, NoSuchAlgorithmException, NoSuchPaddingException;
+	public void restore(SecretKeySpec clientKey, String fileName, int option, String lastModified) throws RemoteException, IOException, NoSuchAlgorithmException, NoSuchPaddingException;
 	public void delete(SecretKeySpec clientKey, String fileName, int option, String lastModified) throws RemoteException, IOException, NoSuchAlgorithmException, NoSuchPaddingException;
 	public String reclaim(SecretKeySpec clientKey, int mem) throws RemoteException, IOException, NoSuchAlgorithmException, NoSuchPaddingException;
 	public String list(SecretKeySpec clientKey) throws RemoteException;
