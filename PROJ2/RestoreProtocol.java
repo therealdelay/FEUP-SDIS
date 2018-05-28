@@ -117,7 +117,7 @@ public class RestoreProtocol implements Runnable {
 			in.close();
 
 		} catch (IOException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException e) {
-			System.out.println("Error on reading from socket. " + e);
+			System.out.println("User isn't authorized to perform this action. ");
 			return false;
 		}
 
