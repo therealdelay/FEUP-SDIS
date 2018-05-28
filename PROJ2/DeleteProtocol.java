@@ -42,6 +42,11 @@ public class DeleteProtocol implements Runnable {
 	
 	@Override
 	public void run (){
+		for(ServerFile file : this.server.getFileManager().getFiles()){
+			if(file.getLastModifiedDateStr().equals(this.lastModified)){
+				this.fileId = file.getId();
+			}
+		}
 
 		String encodedKey = Base64.getEncoder().encodeToString(this.secretKey.getEncoded());
 

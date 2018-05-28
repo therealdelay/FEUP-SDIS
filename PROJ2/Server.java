@@ -169,7 +169,7 @@ public class Server implements ServerInterf {
 	private void configureTCPSocket(String[] args) {
 		address = args[6];
 		port = Integer.parseInt(args[7]);
-		System.out.println("YOU ARE NOW LISTENING ON RADIO " + port + " " + address);
+		//System.out.println("YOU ARE NOW LISTENING ON RADIO " + port + " " + address);
 		try {
 			this.tcpSocket = new ServerSocket(port);
 		} catch(IOException e) {

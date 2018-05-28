@@ -80,7 +80,6 @@ public class FileManager{
 		String fullPath = ServerFile.toPathName(fileName);
 		for(ServerFile file : this.files){
 			i++;
-			System.out.println("FODA-SE " + file.getPathName());
 			if(fullPath.equals(file.getPathName())){
 				System.out.printf("%-7d | %-30s", i, file.getLastModifiedDateStr());
 				versions.add(file.getLastModifiedDateStr());
@@ -108,7 +107,7 @@ public class FileManager{
 		for(ServerChunk chunk : this.chunks){
 			if(chunk.getId().compareTo(chunkId) == 0){
 				chunk.addToDisk(peerId,size);
-				System.out.println(this.toString());
+				//System.out.println(this.toString());
 				return;
 			}
 		}
@@ -116,7 +115,7 @@ public class FileManager{
 		ServerChunk chunk = new ServerChunk(chunkId,fileEncryptedId,size,repDeg);
 		chunk.incRepDeg(peerId);
 		this.chunks.add(chunk);
-		System.out.println(this.toString());
+		//System.out.println(this.toString());
 	}
 
 	private synchronized ServerChunk setChunkOnDisk(String chunkId, long size){
@@ -254,12 +253,7 @@ public class FileManager{
 			ServerFile serverFile;
 			for(int i = 0; i < this.files.size(); i++){
 				serverFile = this.files.get(i);
-				if(!serverFile.getLastModifiedDateStr().equals(lastModified)) {
-					continue;
-				}
-				
-				filePath = serverFile.getPathName();
-				fileId = serverFile.getId();
+
 				//delete if user is authorized
 				try {
 
@@ -276,7 +270,6 @@ public class FileManager{
 				}
 			}
 		}
-
 
 		//Delete chunks of fileId
 		ArrayList<String> chunksToRemove = new ArrayList<String>();
@@ -297,32 +290,20 @@ public class FileManager{
 						i--;
 					}
 					catch(Exception e) {
-						System.out.println("The client isn't authorize to delete this file");
+						System.out.println("The client ins't authorize to delete this file");
 					}
 				}
 			}
 			this.toString();
 		}
 
-		System.out.println("LEEL " + chunksToRemove.size());
-		System.out.println("DATE " + lastModified);
-		
-		if(chunksToRemove.size() == 0)
-			return;
-
 		File file;
 		String fileName;
 		for(int i = 0; i < chunksToRemove.size(); i++){
-			
 			fileName = chunksToRemove.get(i)+".chunk";
 			System.out.println("Deleting file: "+fileName);
 			file = new File(this.getSWDFilePathName(fileName));
-			
-
-			if(file.delete())
-				System.out.println("File " + fileName + " deleted.");
-			else
-				System.out.println("File " + fileName + " not deleted.");
+			file.delete();
 		}
 	}
 
@@ -340,10 +321,8 @@ public class FileManager{
 	public synchronized boolean ownsChunk(String chunkId){
 
 		String fileId = chunkId.split("_")[0];
-		System.out.println(fileId);
 
 		for(ServerFile file : this.files){
-			System.out.println(file.getInitPeerId());
 			if(file.getId().compareTo(fileId) == 0 && file.getInitPeerId() == this.serverId)
 				return true;
 		}
@@ -383,7 +362,7 @@ public class FileManager{
 	public int getFileTotalChunks(String fileName){
 		File file = new File(fileName);
 		float size = (float) file.length();
-		System.out.println("Size: "+size);
+		//System.out.println("Size: "+size);
 
 		int total = (int) size/Server.MAX_CHUNK_SIZE+1;
 		return total;
@@ -453,7 +432,7 @@ public class FileManager{
 
 	public ArrayList<ServerChunk> readSWD(){
 
-		System.out.println(this.toString());
+		//System.out.println(this.toString());
 
 		File[] files = this.WDir.toFile().listFiles();
 

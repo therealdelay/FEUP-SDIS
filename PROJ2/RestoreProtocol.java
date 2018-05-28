@@ -183,7 +183,6 @@ public class RestoreProtocol implements Runnable {
 	public byte[] decryptBody(byte[] body)
 			throws IOException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
 		
-		System.out.println("DECRYPT: "+ body.length);
 		this.cipher.init(Cipher.DECRYPT_MODE, this.secretKey);
 		return this.cipher.doFinal(body);
 	}

@@ -92,7 +92,6 @@ public class StoreChunk implements Runnable {
 		
 		//Parse header elements
 		String[] header = parts[0].split(" ");
-		System.out.println("\n" + Arrays.toString(header) + "\n");
 		this.version = header[1];
 		this.senderId = header[2];
 		this.encryptedFileId = header[3];
@@ -105,7 +104,6 @@ public class StoreChunk implements Runnable {
 				
 		String lastModified = header[i++];
 		String peerId = header[i++];
-		System.out.println("Peer ID: "+peerId);
 		this.chunkNr = header[i++];
 		this.repDeg = header[i].trim();
 		
@@ -161,7 +159,7 @@ public class StoreChunk implements Runnable {
 	private void notifyRemovedThread(){
 		ControlProtocol handler = (ControlProtocol) this.server.removedThreads.get("REMOVED"+this.fileId+"_"+this.chunkNr);
 		if(handler != null){
-			System.out.println("StoreChunk: Notifying removed thread for chunk "+this.fileId+" "+this.chunkNr);
+			//System.out.println("StoreChunk: Notifying removed thread for chunk "+this.fileId+" "+this.chunkNr);
 			handler.notifyPutChunk(this.fileId,this.chunkNr);
 		}
 	}
