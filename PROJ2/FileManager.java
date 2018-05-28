@@ -236,7 +236,7 @@ public class FileManager{
 		return chunksToRemove;
 	}
 	
-	public void removeAllChunks(String fileId, String secretKey){ 
+	public void removeAllChunks(String fileId, String secretKey, int version){ 
 		Cipher cipher; 
 		SecretKeySpec key;
 		
@@ -252,11 +252,17 @@ public class FileManager{
 		
 		//Delete file if exists
 		synchronized(this.files){
+			int countVersions = 0;
 			ServerFile serverFile;
 			for(int i = 0; i < this.files.size(); i++){
 				serverFile = this.files.get(i);
-				if(serverFile.getId().compareTo(fileId) == 0){
-					
+				if((serverFile.getId().compareTo(fileId) == 0) && (countVersions < version-1)){
+					if(version != 0){
+						if(countVersions != version-1){
+							countVersions++;
+							continue;
+						}
+					}
 					//delete if user is authorized
 					try {
 						
@@ -266,10 +272,11 @@ public class FileManager{
 
 						//it can decrypt
 						this.files.remove(i);
-						break;
+						System.out.println("Count " + countVersions);
+						// break;
 					}
 					catch(Exception e){
-						System.out.println("The client ins't authorize to delete this file");
+						System.out.println("The client isn't authorize to delete this file");
 					}
 				}
 			}
@@ -310,6 +317,7 @@ public class FileManager{
 			file.delete();
 		}
 	}
+
 		
 	public synchronized boolean containsFile(String fileId){
 		ServerFile file;

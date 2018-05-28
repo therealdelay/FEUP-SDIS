@@ -27,6 +27,7 @@ public class Server implements ServerInterf {
 	private String version;
 	private int port;
 	private String address;
+	public static int deleteVersion;
 	
 	private Registry rmiRegistry;
 	
@@ -319,7 +320,7 @@ public class Server implements ServerInterf {
 		this.pool.execute(handler);
 	}
 	
-	public void restore(SecretKeySpec clientKey, String fileName) throws RemoteException, IOException,NoSuchPaddingException, NoSuchAlgorithmException {
+	public void restore(SecretKeySpec clientKey, String fileName, int option) throws RemoteException, IOException,NoSuchPaddingException, NoSuchAlgorithmException {
 		this.printRequest("RESTORE "+fileName);
 
 		if(!ready)
@@ -331,13 +332,21 @@ public class Server implements ServerInterf {
 		this.pool.execute(handler);
 	}
 	
-	public void delete(SecretKeySpec clientKey, String fileName) throws NoSuchPaddingException, NoSuchAlgorithmException{
+	public void delete(SecretKeySpec clientKey, String fileName, int version) throws NoSuchPaddingException, NoSuchAlgorithmException{
 		this.printRequest("DELETE "+fileName);
 
-		if(!ready)
+		if (!ready)
 			return;
 
-		this.pool.execute(new DeleteProtocol(this, fileName, clientKey));
+		this.deleteVersion = version;
+
+		this.pool.execute(new DeleteProtocol(this, fileName, clientKey, version));
+	}
+
+	public ArrayList<String> showVersions(String fileName) throws RemoteException{
+		ArrayList<String> versions = new ArrayList<String>();
+		versions = this.fileManager.showPreviousVersions(this.fileManager.getFile(ServerFile.toId(fileName)));
+		return versions;
 	}
 	
 	public String reclaim(SecretKeySpec clientKey, int mem) throws NoSuchPaddingException, NoSuchAlgorithmException{
