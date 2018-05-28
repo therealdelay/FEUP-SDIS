@@ -34,11 +34,11 @@ public class DeleteProtocol implements Runnable {
 		this.fileName = fileName;
 		File file = new File(fileName);
 		this.fileId = ServerFile.toId(fileName, file.lastModified());
-		this.fileEncryptedId = ServerFile.toEncryptedId(fileName, secretKey);
 		this.secretKey = clientKey;
+		this.fileEncryptedId = ServerFile.toEncryptedId(fileName, this.secretKey);
 		this.version = version;
 		this.lastModified = lastModified;
-}
+	}
 	
 	@Override
 	public void run (){

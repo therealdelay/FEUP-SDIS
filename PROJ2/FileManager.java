@@ -248,16 +248,20 @@ public class FileManager{
 			System.err.println("Error Removing All Chunks");
 			return;
 		}
-		
+
+		String filePath = new String();
 		//Delete file if exists
 		synchronized(this.files){
 			ServerFile serverFile;
 			for(int i = 0; i < this.files.size(); i++){
 				serverFile = this.files.get(i);
-				if(serverFile.getLastModifiedDateStr().equals(lastModified)) {
-					System.out.println("REMOVE THIS SHIT" + serverFile.getLastModifiedDateStr());
+				if(!serverFile.getLastModifiedDateStr().equals(lastModified)) {
+					continue;
 				}
 				
+				filePath = serverFile.getPathName();
+				System.out.println("REMOVE THIS SHIT" + serverFile.getLastModifiedDateStr());
+				fileId = serverFile.getId();
 				//delete if user is authorized
 				try {
 
@@ -308,6 +312,7 @@ public class FileManager{
 			fileName = chunksToRemove.get(i)+".chunk";
 			System.out.println("Deleting file: "+fileName);
 			file = new File(this.getSWDFilePathName(fileName));
+			System.out.println(file);
 			file.delete();
 		}
 	}

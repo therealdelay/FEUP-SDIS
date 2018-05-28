@@ -221,13 +221,14 @@ public class TestApp {
 				System.out.println();
 			}
 
-			System.out.println("Which version do you want to delete?(Write '0' to delete all)");
+			System.out.println("Which version do you want to delete?");
 			System.out.print("> ");
 
 			Scanner reader = new Scanner(System.in);
 			intOption = reader.nextInt();
-			if(intOption == 0){
-				System.out.println("Delete all versions");
+			if(intOption <= 0 || intOption >= versions.size()+1){
+				System.out.println("Invalid option. Exiting...");
+				return;
 			}
 			else{			
 				System.out.println("Delete version " + intOption);

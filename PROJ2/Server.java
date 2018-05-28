@@ -29,7 +29,7 @@ public class Server implements ServerInterf {
 	private String address;
 	public static int deleteVersion;
 	public static String lastModified;
-	
+
 	private Registry rmiRegistry;
 	
 	private TwinMulticastSocket MCsocket;
