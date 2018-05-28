@@ -64,12 +64,23 @@ public class StoreChunk implements Runnable {
 			
 		if(!fileManager.ownsChunk(chunkId)){
 			
-			this.sendStoredMsg();
-			
-			if(!fileManager.containsChunk(chunkId))
-				this.saveChunk(chunkId);
-			else
+			if(!fileManager.containsChunk(chunkId)){
+
+				int size = this.chunkBody.length;
+				
+				if(fileManager.addMem(size)){
+					this.sendStoredMsg();
+					this.saveChunk(chunkId);
+				}
+				else{
+					this.printErrMsg("Memory Full");
+				}
+				
+			}
+			else{
 				this.printErrMsg("Chunk already saved");
+				this.sendStoredMsg();
+			}
 		}		
 		else
 			this.printErrMsg("Owner of file");

@@ -321,16 +321,26 @@ public class Server implements ServerInterf {
 		this.pool.execute(handler);
 	}
 	
-	public void restore(SecretKeySpec clientKey, String fileName, int option) throws RemoteException, IOException,NoSuchPaddingException, NoSuchAlgorithmException {
+	public void restore(SecretKeySpec clientKey, String fileName, int option, String lastModified) throws RemoteException, IOException,NoSuchPaddingException, NoSuchAlgorithmException {
 		this.printRequest("RESTORE "+fileName);
 
 		if(!ready)
 			return;
 		// TODO: verify this
-		File file = new File(fileName);
-		String fileId = ServerFile.toId(fileName, file.lastModified());
+
+		this.lastModified = lastModified;
+
+		long lastModifiedLong = 0;
+
+		for(ServerFile file: this.fileManager.getFiles()){
+			if(file.getLastModifiedDateStr().equals(lastModified)){
+				lastModifiedLong = file.getLastModifiedDate();
+			}
+		}
+
+		String fileId = ServerFile.toId(fileName, lastModifiedLong);
 		Runnable handler = new RestoreProtocol(this, fileName, fileId, clientKey);
-		this.requests.put("RESTORE"+ServerFile.toId(fileName, file.lastModified()), handler);
+		this.requests.put("RESTORE"+ServerFile.toId(fileName, lastModifiedLong), handler);
 		this.pool.execute(handler);
 	}
 	
