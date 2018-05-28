@@ -32,7 +32,7 @@ public class ServerFile implements Comparable<ServerFile>{
 	
 	public ServerFile(String fileName, int replicationDeg, long lastModified, SecretKeySpec secretKey, int peerId){
 		this.pathName = ServerFile.toPathName(fileName);
-		this.id = ServerFile.toId(fileName);
+		this.id = ServerFile.toId(fileName, lastModified);
 		this.encryptedId = ServerFile.toEncryptedId(fileName, secretKey);
 		this.lastModified = lastModified;
 		//this.readCreationDate();
@@ -105,9 +105,9 @@ public class ServerFile implements Comparable<ServerFile>{
 		return file.getAbsolutePath();
 	}
 	
-	public static String toId(String fileName){
+	public static String toId(String fileName, long lastModified){
 
-		String path = ServerFile.toPathName(fileName);
+		String path = ServerFile.toPathName(fileName) + "_" + lastModified;
 
 		try{
 			
